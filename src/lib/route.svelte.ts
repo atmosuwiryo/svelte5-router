@@ -313,7 +313,6 @@ export type RouteConfig = {
     pre?: Hook | Hook[];
     post?: Hook | Hook[];
   };
-  children?: RouteConfig[];
   status?: number;
 };
 
@@ -394,37 +393,6 @@ export class Route {
   };
 
   /**
-   * The children routes of the route.
-   *
-   * This is useful if you want to be declarative about the routes that are direct
-   * children of this route and not depend on the router to determine the children
-   * when there are multiple <Router/> instances.
-   *
-   *
-   * @optional If no value is provided, there are no direct child routes. Routes may
-   * be mapped to children routes by the router when there are multiple <Router/> instances
-   * with overlapping `basePath` values.
-   *
-   * @example
-   * ```ts
-   * const routes: Route[] = [
-   *   ...
-   *   {
-   *     path: "/users",
-   *     children: [
-   *       {
-   *         path: "/:id",
-   *         component: User
-   *       }
-   *     ]
-   *   }
-   *   ...
-   * ]
-   * ```
-   */
-  children?: Route[];
-
-  /**
    * The status of the route once it has been matched or otherwise processed.
    */
   status?: number;
@@ -453,7 +421,6 @@ export class Route {
     this.props = config.props;
     this.hooks = config.hooks;
     this.status = config.status;
-    this.children = config.children?.map((child) => new Route(child));
   }
 
   /**
