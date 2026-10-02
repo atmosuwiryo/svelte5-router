@@ -62,3 +62,56 @@ describe("evaluators", () => {
     expect(evaluators.valid[Identities.object]({ a: 0, b: { c: null } })).toBe(false);
   });
 });
+
+describe("evaluators.any", () => {
+  test("compares primitives", () => {
+    expect(evaluators.any[Identities.string]("a", "a")).toBe(true);
+    expect(evaluators.any[Identities.string]("a", "b")).toBe(false);
+    expect(evaluators.any[Identities.number](1, 1)).toBe(true);
+    expect(evaluators.any[Identities.boolean](true, true)).toBe(true);
+    expect(evaluators.any[Identities.null](null, null)).toBe(true);
+    expect(evaluators.any[Identities.undefined](undefined, undefined)).toBe(true);
+    expect(evaluators.any[Identities.regexp] as unknown).toBeTypeOf("function");
+  });
+
+  test("compares arrays element-wise", () => {
+    expect(evaluators.any[Identities.array]([1, 2], [1, 2])).toBe(true);
+    expect(evaluators.any[Identities.array]([1], [1, 2])).toBe(false);
+    expect(evaluators.any[Identities.array]([1], [2])).toBe(false);
+  });
+
+  test("compares objects by keys", () => {
+    expect(evaluators.any[Identities.object]({ a: 1, b: "x" }, { a: 1, b: "x" })).toBe(true);
+    expect(evaluators.any[Identities.object]({ a: 1 }, { a: 2 })).toBe(false);
+    expect(evaluators.any[Identities.object]({ a: 1 }, { b: 1 })).toBe(false);
+    expect(evaluators.any[Identities.object](1, { a: 1 })).toBe(false);
+  });
+
+  test("extracts regex matches", () => {
+    expect(evaluators.any[Identities.regexp](/^a$/, "a")).toBe(true);
+    expect(evaluators.any[Identities.regexp](/^(?<x>a)$/, "a")).toEqual({ x: "a" });
+    expect(evaluators.any[Identities.regexp](/^b$/, "a")).toBe(false);
+  });
+});
+
+describe("evaluators.valid", () => {
+  test("validates non-empty strings and numbers", () => {
+    expect(evaluators.valid[Identities.string]("x")).toBe(true);
+    expect(evaluators.valid[Identities.string]("")).toBe(false);
+    expect(evaluators.valid[Identities.number](1)).toBe(true);
+    expect(evaluators.valid[Identities.number](NaN)).toBe(false);
+  });
+
+  test("validates arrays, regexps and functions", () => {
+    expect(evaluators.valid[Identities.array]([1])).toBe(true);
+    expect(evaluators.valid[Identities.array]([])).toBe(false);
+    expect(evaluators.valid[Identities.regexp](/a/)).toBe(true);
+    expect(evaluators.valid[Identities.regexp]("a")).toBe(false);
+    expect(evaluators.valid[Identities.function](() => {})).toBe(true);
+  });
+
+  test("treats null and undefined as invalid", () => {
+    expect(evaluators.valid[Identities.null](null)).toBe(false);
+    expect(evaluators.valid[Identities.undefined](undefined)).toBe(false);
+  });
+});

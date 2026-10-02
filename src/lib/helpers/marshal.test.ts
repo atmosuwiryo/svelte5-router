@@ -31,4 +31,8 @@ describe("marshal", () => {
       }
     });
   });
+
+  test("throws for an unsupported value type", () => {
+    expect(() => marshal(Symbol("unsupported"))).toThrow();
+  });
 });

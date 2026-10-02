@@ -98,4 +98,21 @@ describe('Router Remount Configuration', () => {
     expect(config.renavigation).toBe(true);
     expect(config.routes).toHaveLength(2);
   });
+
+  it('should serialize id, basePath, routes and hooks via toJSON', () => {
+    const hooks = { pre: () => true };
+    const config = new RouterInstanceConfig({
+      id: 'json-router',
+      basePath: '/base',
+      hooks,
+      routes: [{ path: '/test', component: mockComponent }]
+    });
+
+    expect(config.toJSON()).toEqual({
+      id: 'json-router',
+      basePath: '/base',
+      routes: config.routes,
+      hooks
+    });
+  });
 });

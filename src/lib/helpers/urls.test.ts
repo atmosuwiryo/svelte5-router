@@ -1,4 +1,4 @@
-import { expect, test } from "vitest";
+import { afterEach, expect, test, vi } from "vitest";
 
 import { urls } from "./urls";
 
@@ -111,35 +111,32 @@ test("file url with key-value query parameters", () => {
   });
 });
 
-// test("parses array parameter parsing", () => {
-//   expect(urls.parse("http://localhost:5173/#/foo/bar?a[3]=3&a[19]=1.9&a[0]=first&a[99]=9.99&a[5]=false")).toEqual({
-//     protocol: "http",
-//     host: "localhost",
-//     port: "5173",
-//     path: "/foo/bar",
-//     query: {
-//       params: {
-//         a: ["first", 3, false, 1.9, 9.99]
-//       }
-//     },
-//     hash: "/foo/bar?a[3]=3&a[19]=1.9&a[0]=first&a[99]=9.99&a[5]=false"
-//   });
-// });
+test("parses array query params in the hash", () => {
+  const result = urls.parse(
+    "http://localhost:5173/#/foo/bar?a[3]=3&a[19]=1.9&a[0]=first&a[99]=9.99&a[5]=false"
+  );
 
-// test("query is undefined", () => {
-//   expect(urls.parse("http://localhost:5173/foo/bar").query.toString()).toEqual("");
-// });
+  expect(result.hash.query.params).toEqual({ a: ["first", 3, false, 1.9, 9.99] });
+});
 
-// test("query.toString() matches location.search", () => {
-//   expect(urls.parse("http://localhost:5173/foo/bar?a=1&b=2").query.toString()).toEqual("a=1&b=2");
-//   expect(urls.parse("http://localhost:5173/#/foo/bar?a=1&b=2").query.toString()).toEqual("a=1&b=2");
-// });
+test("query.toString() round-trips simple params", () => {
+  expect(urls.parse("http://localhost:5173/foo/bar?a=1&b=2").query.toString()).toBe("a=1&b=2");
+});
 
-// test("query.toString() matches multiples (pagination=2,23&company=123)", () => {
-//   expect(urls.parse("http://localhost:5173/foo/bar?pagination=2,23&company=123").query.toString()).toEqual(
-//     "pagination=2,23&company=123"
-//   );
-//   expect(urls.parse("http://localhost:5173/#/foo/bar?pagination=2,23&company=123").query.toString()).toEqual(
-//     "pagination=2,23&company=123"
-//   );
-// });
+test("parses a relative URL using window.location", () => {
+  vi.stubGlobal("window", {
+    location: { protocol: "http:", hostname: "localhost", port: "5173" }
+  });
+
+  const result = urls.parse("/foo/bar?a=1");
+
+  expect(result.protocol).toBe("http");
+  expect(result.host).toBe("localhost");
+  expect(result.port).toBe("5173");
+  expect(result.path).toBe("/foo/bar");
+  expect(result.query.params).toEqual({ a: 1 });
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
