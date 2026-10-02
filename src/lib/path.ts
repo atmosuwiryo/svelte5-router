@@ -2,10 +2,6 @@
  * @remarks
  * Future home of more path related functionality.
  */
-/**
- * @remarks
- * Future home of more path related functionality.
- */
 
 /**
  * The types of values that can be used as a path.
