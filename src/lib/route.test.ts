@@ -19,8 +19,20 @@ describe("Route.test", () => {
     const result = new Route({ path: /^\/x\/(?<id>.+)$/ }).test("/x/42");
 
     expect(result.condition).toBe("exact-match");
-    // regexp group values pass through `marshal`, so "42" is coerced to 42
-    expect(result.params).toEqual({ id: 42 });
+    // group values are strings, so leading zeros are preserved
+    expect(result.params).toEqual({ id: "42" });
+  });
+
+  test("string-regex path params are strings", () => {
+    const result = new Route({ path: "(?<code>.*)" }).test("/007");
+
+    expect(result.params).toEqual({ code: "007" });
+  });
+
+  test("RegExp path params are strings (leading zeros preserved)", () => {
+    const result = new Route({ path: /\/(?<code>.*)/ }).test("/007");
+
+    expect(result.params).toEqual({ code: "007" });
   });
 
   test("treats a numeric path as a miss instead of throwing", () => {

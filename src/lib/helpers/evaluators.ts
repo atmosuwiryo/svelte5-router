@@ -1,5 +1,4 @@
 import { identify, Identities } from "./identify";
-import { marshal } from "./marshal";
 import type { ReturnParam } from "./urls";
 
 /**
@@ -105,12 +104,13 @@ export namespace evaluators {
       const result = (a as RegExp).exec(b);
       if (result) {
         if (result.groups) {
-          return marshal(result.groups).value as { [key: string]: string };
+          // Named groups are returned verbatim: path/query params are strings.
+          return result.groups;
         } else {
           if (result.length === 1 && result[0] === result.input) {
             return true;
           }
-          return marshal(result.slice(1)[0]).value as string[];
+          return result.slice(1)[0];
         }
       }
       return false;
