@@ -157,15 +157,17 @@ valid input:
 - Removed `RouteConfig.children` and `Route.children` (unused; see §8 item 3).
 - `Query.test` semantics clarified: `exact-match` iff every route constraint is
   present in the actual params and matches; otherwise `no-match` (see §8 item 2).
+- Removed unused `Route.traces` field (also made `Route` rune-free/testable).
 
 ---
 
 ## 7. Verification evidence (all observed)
 
 - `npx svelte-check` → **0 errors, 0 warnings** (with `strictNullChecks: true`).
-- `npx vitest run` → **54 passed, 0 skipped, 0 failed** (8 files).
+- `npx vitest run` → **65 passed, 0 skipped, 0 failed** (10 files).
 - `npm run test:ci` (vitest + v8 coverage) → green.
-- `npm run build` (`svelte-package`) → **success** (`src/lib -> dist`).
+- `npm run build` (`svelte-package`) → **success** (`src/lib -> dist`), with
+  `find dist -name '*.test.*'` → 0.
 
 Behaviour probes run during the work (temporary test, removed after):
 route `basePath` survives with router basePath set ✅; route `hooks` survive
@@ -204,21 +206,43 @@ router hooks ✅. New tests cover the `Query.test` fix (9 cases) and `hash.parse
 
 ---
 
-## 9. Out of scope / known issues not addressed here
+## 9. Out-of-scope items — resolved (follow-up pass)
 
-- `dist` publishes `*.test.js` / `*.test.d.ts` (package `files: ["./**/*"]` +
-  `svelte-package` includes tests). Related: because `svelte-package` writes
-  compiled tests to `.svelte-kit/__package__` (and `dist`), running
-  `npm run build` locally makes `vitest` collect duplicate test files until
-  those artifact dirs are removed. Both are gitignored; cleaning them restores
-  the 54/0 test count.
-- `Regexp.can()` treats any path containing `.`/`,`/space/`#` as a regex, so
-  plain paths like `/docs/intro.html` compile as regex. Pre-existing.
-- `Route.test()` throws (rather than returning `no-match`) for a numeric `path`.
-- `applyActiveClass` spreads a string class into individual characters.
-- Autofixer suggestions: use `SvelteSet` for `routes`; `SvelteDate` in tracing;
-  two `state_referenced_locally` warnings for `rest` in `router.svelte`.
-- The vitest config has no Svelte plugin, so `.svelte.ts` modules that evaluate
-  runes at import time (e.g. `tracing.svelte.ts`) **cannot be unit-tested** under
-  the current harness. `traceEvent` is covered by `svelte-check` + the package
-  build only.
+Five previously deferred items were then tackled. Each is a **behaviour fix**
+(not a pure refactor); each ships with tests except the packaging change, which
+is verified through build output.
+
+1. **Published package no longer includes tests.** `svelte-package` compiled the
+   co-located `*.test.ts` into `dist`, and the release workflow publishes *from*
+   `dist` with `files: ["./**/*"]`. Added
+   `find dist -name '*.test.*' -delete` to the `build` script. Verified: 0
+   `*.test.*` files in `dist` after a build.
+2. **`regexp.can()` no longer misclassifies plain paths.** It treated `.`, `,`,
+   `#` and whitespace as regex intent, so `/docs/intro.html` compiled with `.` as
+   a wildcard. Removed those characters from the detection class; regex-only
+   constructs (`[]{}()*+?\\^$|`, `\w\d\s`) still count. 2 tests added.
+3. **`Route.test()` no longer throws on a numeric `path`.** A matching number
+   path aborted routing for the whole router; it now returns `no-match`. While
+   here, removed the unused `Route.traces` `$state` field, which also made
+   `Route` rune-free and unit-testable. New `route.test.ts` (5 tests).
+4. **`applyActiveClass` no longer spreads string classes into characters.**
+   `{ class: "muted" }` used to add `m`,`u`,`t`,`e`,`d`. Extracted `toClasses()`
+   and a pure `isActive()`, and rewrote the add/remove logic without duplicated
+   array/string branching. New `apply-classes.test.ts` (4 tests) with a mock node.
+5. **Autofixer suggestions cleared.** Adopted `SvelteSet` for `routes` and
+   `SvelteDate` in tracing (both from `svelte/reactivity`); resolved the two
+   `state_referenced_locally` warnings in `router.svelte` by reading props once
+   via `untrack` for mount-time config and making the template spread a
+   `$derived`. Autofixer reports no issues on all three files. Also hardened
+   `vitest.config.ts` to exclude `.svelte-kit`, so a local build no longer makes
+   vitest collect compiled duplicate tests.
+
+---
+
+## 10. Remaining known issues (not addressed)
+
+- The vitest harness still has no Svelte plugin, so `.svelte.ts` modules that
+  evaluate runes at import time (e.g. `tracing.svelte.ts`) cannot be unit-tested
+  directly. `traceEvent` remains covered by `svelte-check` + the package build.
+- `marshal` coerces regex group values (`"42"` → `42`); this is existing
+  behaviour, now asserted by a test rather than treated as a bug.
