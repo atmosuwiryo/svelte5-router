@@ -8,6 +8,11 @@ This document records *why* the changes on this branch exist, what behaviour is
 affected, and what still needs a human decision. It is written to be read cold —
 no prior conversation required.
 
+**Scope of this branch.** It began as the complexity refactor (§1–§6), then grew
+to include the follow-up cleanups (§7–§11), a full test-completeness pass (§12),
+and three bug fixes surfaced later (§13–§15; two of them pre-existing on `main`).
+Current totals and branch layout are in §16.
+
 ---
 
 ## 1. Why this branch exists
@@ -169,7 +174,8 @@ valid input:
 ## 7. Verification evidence (all observed)
 
 - `npx svelte-check` → **0 errors, 0 warnings** (with `strictNullChecks: true`).
-- `npx vitest run` → **79 passed, 0 skipped, 0 failed** (12 files).
+- `npx vitest run` → **79 passed** (12 files) at the time of the refactor — see
+  §12/§16 for current totals.
 - `npm run test:ci` (vitest + v8 coverage) → green.
 - `npm run build` (`svelte-package`) → **success** (`src/lib -> dist`), with
   `find dist -name '*.test.*'` → 0.
@@ -293,7 +299,8 @@ inline reimplementations rather than the router.
 - Removed the `test.only` focus markers from `helpers/urls.test.ts`.
 
 **Result:** `src/lib` statements **45.9% → 97.9%**, branches **66.2% → 88.9%**,
-functions **43.4% → 98.3%**; 160 tests passing (was 79). Both passes added:
+functions **43.4% → 98.3%**; 160 tests at that point (164 now — see §16). Both
+passes added:
 engine + registry + statuses, DOM actions, history helpers, `Query`
 utilities, the `evaluators.any`/`valid` tables, `logging` level/sink paths,
 `runtime.config`, `paths.base`, `identify`, `RouteResult.toString` /
@@ -370,7 +377,8 @@ not introduced by the refactor.
 `/nested/level-1/level-2`, `/nested/level-1/level-2/level-3`, `/patterns`,
 `/protected`, `/paths-and-params`, `/transitions`, `/extras`, `/hash` — all now
 report **0 console errors** and render their content (e.g. home 799 → 1602
-chars). Unit tests: `snippet.test.ts` (3). Full suite 163 passing.
+chars). Unit tests: `snippet.test.ts` (3). Full suite passes (164 total — see
+§16).
 
 ---
 
@@ -402,3 +410,25 @@ Tests updated accordingly (`router-instance.test.ts`).
 `/home/with-query-params?someQueryParam=123` → `/patterns` → `/nested` →
 `/protected` → `/home` — now updates content on every step with **zero console
 errors**.
+
+---
+
+## 16. Final state and branch layout
+
+**Verified on `refactor/simplify-core`:**
+
+- `npx vitest run` → **164 passed, 0 skipped, 0 failed** (20 files).
+- `src/lib` coverage → lines **97.9%**, branches **88.9%**, functions **98.3%**.
+- `npx svelte-check` → 0 errors, 0 warnings.
+- `npm run build` → success; no `*.test.*` artifacts in `dist`.
+
+**Branch layout.** Everything lives on `refactor/simplify-core`; `main` is left
+untouched. This branch was originally the refactor only — the test-completeness
+work and the bug fixes were fast-forwarded onto it so all of the work sits in one
+place. The intermediate branches (`test/coverage-completeness`,
+`fix/snippet-routes`, `fix/nested-router-remount`) are ancestors along the same
+line.
+
+**Pre-existing bugs fixed here** (both reproduced on `main`): the snippet render
+crash (§14) and the nested-router remount freeze (§15); plus the
+`renavigation: false` first-render bug (§13), which the test pass surfaced.
