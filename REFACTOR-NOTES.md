@@ -269,3 +269,41 @@ is verified through build output.
 
   (The narrower rule matters: skipping `normalize` for *every* regex string, as
   first proposed, would have broken the documented non-anchored example.)
+
+---
+
+## 12. Test-completeness pass
+
+A coverage review (v8, `npx vitest run --coverage`) found the **routing engine
+was 0% covered** and that three files named `router-*.test.ts` largely tested
+inline reimplementations rather than the router.
+
+**Added / changed:**
+- New `router-instance.test.ts` (17 tests) driving the real engine with stubbed
+  `window`/`location`/`history`: route registration, `get()` exact/base/default
+  matching, catch-all and `undefined` results, object + function `404` status
+  handlers, `handleStateChange()` apply path, and global/route pre-hook
+  cancellation; plus `registry` register-duplicate / deregister-unknown / history
+  patch.
+- New `statuses.test.ts` (3 tests) for `getStatusByValue`.
+- Deleted `router-integration.test.ts` — it imported nothing from the library.
+- Scoped `vitest.config.ts` coverage to `src/lib/**`, excluded test files, and
+  added thresholds (statements/lines/branches 70, functions 55) so coverage
+  can't silently regress.
+- Removed the `test.only` focus markers from `helpers/urls.test.ts`.
+
+**Result:** `src/lib` statements **45.9% → 75.4%**; `router-instance` **0% →
+76.9%**; 94 tests passing (was 79).
+
+**Still uncovered (known gaps):** `actions/route.svelte.ts` and
+`actions/active.svelte.ts` (~5–9%, DOM actions), `path.ts` (44%), the
+`goto`/`replace`/`pop`/`query` history helpers, `logging.ts` (56%), `tracing`
+branches (64%), the relative-URL branch of `urls.parse` (branches 46%), the
+`runtime` env fallbacks (branches 21%), and most of `evaluators.any[...]`
+(functions 45%).
+
+**Side observation (possible bug, not fixed):** `handleStateChange` computes
+`shouldApply = this.config.renavigation !== false` independent of whether the
+route changed, so `renavigation: false` skips the *first* render too — the
+component would never mount. Flagged for a decision rather than enshrined in a
+test.
