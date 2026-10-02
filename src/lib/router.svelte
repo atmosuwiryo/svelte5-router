@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { onDestroy, untrack, type Component } from "svelte";
+  import { onDestroy, untrack, type Component, type Snippet } from "svelte";
+  import { isSnippet } from "./helpers/snippet";
   import { createSpan, traceEvent, Span } from "./helpers/tracing.svelte";
   import { registry } from "./registry.svelte";
   import { type RouteResult } from "./route.svelte";
@@ -18,6 +19,21 @@
   const span = createSpan(initial.id ? `[${initial.id}]` : "router");
 
   let RenderableComponent = $state<Component | null>(null);
+  let RenderableSnippet = $state<Snippet | null>(null);
+
+  /**
+   * Snippets must be rendered with `{@render}`, components with a tag; Svelte
+   * has no public predicate, so `isSnippet` distinguishes them.
+   */
+  const setRenderable = (value: Component | Snippet | null) => {
+    if (isSnippet(value)) {
+      RenderableSnippet = value;
+      RenderableComponent = null;
+    } else {
+      RenderableComponent = value as Component | null;
+      RenderableSnippet = null;
+    }
+  };
   let router: RouterInstance;
   let route: RouteResult | undefined = $state();
   let additionalProps = $state<Record<string, any> | undefined>({});
@@ -44,10 +60,10 @@
     if (typeof r.result.component === "function" && r.result.component.constructor.name === "AsyncFunction") {
       // Handle async component by first awaiting the import:
       const module = await r.result.component();
-      RenderableComponent = module.default || module;
+      setRenderable(module.default || module);
     } else {
-      // Handle regular component by directly assigning the component:
-      RenderableComponent = r.result.component;
+      // Snippets render via {@render}; components render as a tag.
+      setRenderable(r.result.component);
     }
     
     // Force reactivity by updating route state after component assignment
@@ -89,8 +105,12 @@
 </script>
 
 {#key route?.result?.path?.original || Math.random()}
-  <RenderableComponent
-    {route}
-    {...additionalProps}
-    {...restWithoutRoutes} />
+  {#if RenderableSnippet}
+    {@render RenderableSnippet()}
+  {:else if RenderableComponent}
+    <RenderableComponent
+      {route}
+      {...additionalProps}
+      {...restWithoutRoutes} />
+  {/if}
 {/key}

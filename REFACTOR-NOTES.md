@@ -339,3 +339,35 @@ So: a changed route always applies; a same-route re-navigation applies only when
 renavigation is enabled. Covered by three `router-instance.test.ts` cases
 (first render with renavigation disabled, same-route skip, same-route
 re-apply).
+
+---
+
+## 14. Snippet routes rendered as components — fixed
+
+**Symptom:** every demo route threw `Svelte error: invalid_snippet_arguments`
+at runtime; routed content failed to render (only the app shell showed).
+
+**Root cause:** `src/lib/router.svelte` rendered the resolved route value as a
+tag — `<RenderableComponent {route} {...additionalProps} {...restWithoutRoutes} />`
+— but many demo routes pass a **parameterless snippet** as `component`
+(`component: welcome`, `component: snippet`). Svelte 5 only allows rendering a
+snippet via `{@render ...}`, and rejects instantiating a snippet as a component
+or handing it arguments (`validate_snippet_args`). The library advertises
+"components, snippets, or both" but had no snippet branch.
+
+**Pre-existing:** reproduced on `main` (same error, identical render template);
+not introduced by the refactor.
+
+**Fix:**
+- New `src/lib/helpers/snippet.ts` with `isSnippet()`. Svelte exposes no public
+  predicate, but the compiler always emits snippets as arrow functions while
+  components are function declarations/classes (which carry a `prototype`);
+  that is the discriminator.
+- `router.svelte` now tracks `RenderableSnippet` separately and renders
+  `{@render RenderableSnippet()}` for snippets and the component tag otherwise.
+
+**Verified:** headless-browser run over `/`, `/nested`, `/nested/level-1`,
+`/nested/level-1/level-2`, `/nested/level-1/level-2/level-3`, `/patterns`,
+`/protected`, `/paths-and-params`, `/transitions`, `/extras`, `/hash` — all now
+report **0 console errors** and render their content (e.g. home 799 → 1602
+chars). Unit tests: `snippet.test.ts` (3). Full suite 163 passing.
