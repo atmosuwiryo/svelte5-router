@@ -14,3 +14,53 @@ describe("query", () => {
     });
   });
 });
+
+describe("Query.test", () => {
+  const actual = (s: string) => new Query(s);
+  const expected = (o: Record<string, any>) => new Query(o as any);
+
+  test("matches a single required param (regression)", () => {
+    expect(actual("a=1").test(expected({ a: "1" }))?.condition).toBe("exact-match");
+    expect(actual("a=1").test(expected({ a: 1 }))?.condition).toBe("exact-match");
+  });
+
+  test("returns no-match for a mismatched single param", () => {
+    expect(actual("a=1").test(expected({ a: "2" }))?.condition).toBe("no-match");
+  });
+
+  test("returns no-match when a required param is absent", () => {
+    expect(actual("b=1").test(expected({ a: "1" }))?.condition).toBe("no-match");
+  });
+
+  test("matches multiple params", () => {
+    expect(actual("a=1&b=2").test(expected({ a: "1", b: "2" }))?.condition).toBe("exact-match");
+  });
+
+  test("returns no-match when one of several params is absent", () => {
+    expect(actual("a=1").test(expected({ a: "1", b: "2" }))?.condition).toBe("no-match");
+  });
+
+  test("ignores extra params not named by the route", () => {
+    expect(actual("a=1&b=2").test(expected({ a: "1" }))?.condition).toBe("exact-match");
+  });
+
+  test("matches boolean and number constraints with coercion", () => {
+    expect(actual("active=true").test(expected({ active: "true" }))?.condition).toBe("exact-match");
+    expect(actual("active=false").test(expected({ active: "true" }))?.condition).toBe("no-match");
+    expect(actual("n=42").test(expected({ n: 42 }))?.condition).toBe("exact-match");
+  });
+
+  test("matches regex constraints", () => {
+    expect(actual("id=123").test(expected({ id: /^\d+$/ }))?.condition).toBe("exact-match");
+    expect(actual("id=abc").test(expected({ id: /^\d+$/ }))?.condition).toBe("no-match");
+  });
+
+  test("matches array constraints", () => {
+    expect(actual("tags[0]=a&tags[1]=b").test(expected({ tags: ["a", "b"] }))?.condition).toBe(
+      "exact-match"
+    );
+    expect(actual("tags[0]=a&tags[1]=c").test(expected({ tags: ["a", "b"] }))?.condition).toBe(
+      "no-match"
+    );
+  });
+});

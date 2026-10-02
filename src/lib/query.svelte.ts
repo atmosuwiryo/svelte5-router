@@ -1,6 +1,6 @@
 import { evaluators, type Condition } from "./helpers/evaluators";
 import { goto } from "./helpers/goto";
-import { Identities } from "./helpers/identify";
+import { identify, Identities } from "./helpers/identify";
 import { marshal } from "./helpers/marshal";
 import type { ReturnParam } from "./helpers/urls";
 
@@ -72,56 +72,48 @@ export class Query {
     goto(path, this.params);
   }
 
+  /**
+   * Evaluate this query (the actual, inbound query string) against a route's
+   * query constraints.
+   *
+   * A constraint key must be present in the actual params and its value must
+   * match; extra actual parameters are ignored. Returns `exact-match` when every
+   * constraint is satisfied, otherwise `no-match`.
+   *
+   * @param inbound - The route's query constraints.
+   */
   test(inbound: Query): QueryEvaluationResult | undefined {
-    if (typeof inbound === "object") {
-      const matches: Record<string, ReturnParam> = {};
-      for (const [key, test] of Object.entries(inbound.params)) {
-        if (this.params[key]) {
-          const marshalled = marshal(this.params[key]);
-          if (test instanceof RegExp) {
-            const res = evaluators.any[Identities.regexp](test, this.params[key]);
-            if (res) {
-              matches[key] = res;
-            } else {
-              return {
-                condition: "no-match"
-              };
-            }
-          } else if (marshalled.identity === Identities.number) {
-            if (marshalled.value === this.params[key]) {
-              matches[key] = marshalled.value as number;
-            }
-          } else if (marshalled.identity === Identities.string) {
-            matches[key] = marshalled.value === this.params[key];
-          } else if (marshalled.identity === Identities.boolean) {
-            matches[key] = marshalled.value === Boolean(this.params[key]);
-          } else if (marshalled.identity === Identities.array) {
-            matches[key] = (marshalled.value as Array<unknown>).includes(this.params[key]);
-          }
-        } else {
-          return {
-            condition: "no-match"
-          };
-        }
-      }
-
-      if (Object.keys(matches).length === Object.keys(inbound).length && evaluators.valid[Identities.object](matches)) {
-        return {
-          condition: "exact-match",
-          matches: marshal(matches).value as Record<string, ReturnParam>
-        };
-      }
-
-      return {
-        condition:
-          Object.keys(matches).length > 1 && Object.keys(inbound).length !== Object.keys(matches).length
-            ? "exact-match"
-            : "no-match",
-        matches: matches as Record<string, ReturnParam>
-      };
+    if (!inbound || typeof inbound !== "object") {
+      return undefined;
     }
 
-    return undefined;
+    const matches: Record<string, ReturnParam> = {};
+
+    for (const [key, want] of Object.entries(inbound.params)) {
+      if (!(key in this.params)) {
+        return { condition: "no-match" };
+      }
+
+      const actual = this.params[key];
+
+      if (want instanceof RegExp) {
+        const result = evaluators.any[Identities.regexp](want, actual);
+        if (!result) {
+          return { condition: "no-match" };
+        }
+        matches[key] = result as ReturnParam;
+        continue;
+      }
+
+      const expected = marshal(want).value;
+      const resolved = marshal(actual).value;
+      if (!evaluators.any[identify(expected)](resolved, expected)) {
+        return { condition: "no-match" };
+      }
+      matches[key] = actual;
+    }
+
+    return { condition: "exact-match", matches };
   }
 
   /**
