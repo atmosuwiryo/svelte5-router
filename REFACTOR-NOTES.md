@@ -161,13 +161,15 @@ valid input:
 - Regex named-group params are now returned verbatim as **strings**. Previously
   `RegExp` paths coerced groups via `marshal` (`"007"` → `7`) while string
   regex paths did not — now both are faithful strings (see §10).
+- `Route` no longer prepends `/` to an **anchored** string-regex path, so
+  `"^/home$"` and `"^/posts/(?<slug>.+)$"` match as documented (see §11).
 
 ---
 
 ## 7. Verification evidence (all observed)
 
 - `npx svelte-check` → **0 errors, 0 warnings** (with `strictNullChecks: true`).
-- `npx vitest run` → **75 passed, 0 skipped, 0 failed** (12 files).
+- `npx vitest run` → **79 passed, 0 skipped, 0 failed** (12 files).
 - `npm run test:ci` (vitest + v8 coverage) → green.
 - `npm run build` (`svelte-package`) → **success** (`src/lib -> dist`), with
   `find dist -name '*.test.*'` → 0.
@@ -256,12 +258,14 @@ is verified through build output.
 
 ---
 
-## 11. Newly observed (needs a decision)
+## 11. Newly observed — fixed
 
-- **`normalize()` mangles anchored string-regex paths.** `Route` normalizes a
-  string `path` by prepending `/` when it does not start with one; for a regex
-  string like `"^/home$"` this yields `"/^/home$"`, which then never matches.
-  Non-anchored strings (e.g. `"(?<child>.*)"`) happen to work. Discovered while
-  writing the group-coercion tests; not fixed here because it is a separate
-  change to path normalization (fix: skip `normalize` for strings that
-  `regexp.can()` classifies as regex). Say the word and I'll take it.
+- **`normalize()` no longer mangles anchored string-regex paths.** `Route` is
+  now only prefixed with `/` when the string is *not* an anchored regex — i.e.
+  when `!(regexp.can(path) && path.startsWith("^"))`. So `"^/home$"` and the
+  documented `"^/posts/(?<slug>.+)$"` match correctly, while non-anchored regex
+  strings like `"(?<child>.*)"` still get the `/` prefix they rely on to match
+  the leading slash. Covered by 4 tests in `route.test.ts`.
+
+  (The narrower rule matters: skipping `normalize` for *every* regex string, as
+  first proposed, would have broken the documented non-anchored example.)
