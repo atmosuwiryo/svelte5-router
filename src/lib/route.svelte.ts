@@ -404,7 +404,14 @@ export class Route {
   constructor(config: RouteConfig) {
     this.name = config.name;
     this.basePath = config.basePath;
-    this.path = typeof config.path === "string" ? normalize(config.path) : config.path;
+    // Normalize literal string paths by prepending "/", but leave an anchored
+    // regex string alone: prepending "/" would break its `^` anchor (e.g.
+    // "^/home$" becoming "/^/home$"). Non-anchored regex strings such as
+    // "(?<child>.*)" still get the prefix so they match the leading slash.
+    this.path =
+      typeof config.path === "string" && !(regexp.can(config.path) && config.path.startsWith("^"))
+        ? normalize(config.path)
+        : config.path;
 
     if (config.querystring) {
       this.querystring = new Query(config.querystring);

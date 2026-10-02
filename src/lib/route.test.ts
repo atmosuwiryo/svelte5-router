@@ -41,4 +41,27 @@ describe("Route.test", () => {
     expect(() => route.test("1")).not.toThrow();
     expect(route.test("1").condition).toBe("no-match");
   });
+
+  test("normalizes a plain string path", () => {
+    expect(new Route({ path: "home" }).test("/home").condition).toBe("exact-match");
+  });
+
+  test("preserves an anchored string-regex path instead of prefixing it", () => {
+    expect(new Route({ path: "^/home$" }).test("/home").condition).toBe("exact-match");
+    expect(new Route({ path: "^/home$" }).test("/home/extra").condition).toBe("no-match");
+  });
+
+  test("extracts groups from an anchored string-regex path (documented example)", () => {
+    const result = new Route({ path: "^/posts/(?<slug>.+)$" }).test("/posts/my-article");
+
+    expect(result.condition).toBe("exact-match");
+    expect(result.params).toEqual({ slug: "my-article" });
+  });
+
+  test("still normalizes a non-anchored string-regex path", () => {
+    const result = new Route({ path: "(?<child>.*)" }).test("/foo");
+
+    expect(result.condition).toBe("exact-match");
+    expect(result.params).toEqual({ child: "foo" });
+  });
 });
