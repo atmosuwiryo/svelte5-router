@@ -198,7 +198,11 @@ router hooks ✅; `children` preserved ✅.
 ## 9. Out of scope / known issues not addressed here
 
 - `dist` publishes `*.test.js` / `*.test.d.ts` (package `files: ["./**/*"]` +
-  `svelte-package` includes tests). Pre-existing packaging issue.
+  `svelte-package` includes tests). Related: because `svelte-package` writes
+  compiled tests to `.svelte-kit/__package__` (and `dist`), running
+  `npm run build` locally makes `vitest` collect duplicate test files until
+  those artifact dirs are removed. Both are gitignored; cleaning them restores
+  the 41/2 test count.
 - `Regexp.can()` treats any path containing `.`/`,`/space/`#` as a regex, so
   plain paths like `/docs/intro.html` compile as regex. Pre-existing.
 - `Route.test()` throws (rather than returning `no-match`) for a numeric `path`.
