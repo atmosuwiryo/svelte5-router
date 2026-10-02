@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy, unmount, type Component } from "svelte";
+  import { onDestroy, untrack, type Component } from "svelte";
   import { createSpan, traceEvent, Span } from "./helpers/tracing.svelte";
   import { registry } from "./registry.svelte";
   import { type RouteResult } from "./route.svelte";
@@ -10,7 +10,12 @@
     { instance?: RouterInstance } & Partial<RouterInstanceConfig> & Record<string, any>
   >();
 
-  const span = createSpan(rest.id ? `[${rest.id}]` : "router");
+  // Props are read once at mount: the router instance is created here and lives
+  // for the component's lifetime. `untrack` makes that initial-value intent
+  // explicit (and silences Svelte's state_referenced_locally warning).
+  const initial = untrack(() => ({ ...rest }));
+
+  const span = createSpan(initial.id ? `[${initial.id}]` : "router");
 
   let RenderableComponent = $state<Component | null>(null);
   let router: RouterInstance;
@@ -50,7 +55,7 @@
     additionalProps = route.route?.props;
   };
 
-  router = registry.register(new RouterInstanceConfig(rest), apply, span);
+  router = registry.register(new RouterInstanceConfig(initial), apply, span);
 
   traceEvent(span, {
     prefix: "✅",
@@ -77,7 +82,10 @@
     router.deregister(span);
   });
 
-  const { routes, basePath, ...restWithoutRoutes } = rest;
+  const restWithoutRoutes = $derived.by(() => {
+    const { routes, basePath, ...restProps } = rest;
+    return restProps;
+  });
 </script>
 
 {#key route?.result?.path?.original || Math.random()}

@@ -1,3 +1,5 @@
+import { SvelteDate } from "svelte/reactivity";
+
 import { ReactiveMap } from "../utilities.svelte";
 
 import { logging } from "./logging";
@@ -33,7 +35,7 @@ export class Span {
     this.id = span.id || Math.random().toString(36).substring(2, 25);
     this.description = span.description;
     this.metadata = span.metadata;
-    this.date = span.date || new Date();
+    this.date = span.date || new SvelteDate();
   }
 
   trace(input: TraceInit, prefix?: string): Trace {
@@ -69,7 +71,7 @@ export class Trace {
   constructor(trace: TraceInit, index?: number, span?: Span, prefix?: string) {
     this.id = trace.id || Math.random().toString(36).substring(2, 25);
     this.index = index;
-    this.date = trace.date || new Date();
+    this.date = trace.date || new SvelteDate();
     this.name = trace.name;
     this.description = trace.description;
     this.metadata = trace.metadata;

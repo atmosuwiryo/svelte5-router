@@ -1,3 +1,5 @@
+import { SvelteSet } from "svelte/reactivity";
+
 import { Query, registry, RouterInstanceConfig, Span, type ApplyFn, type Hook } from ".";
 import { Route, RouteResult } from "./route.svelte";
 import { StatusCode } from "./statuses";
@@ -63,7 +65,7 @@ export class RouterInstance {
   /**
    * The routes for the router instance.
    */
-  routes = new Set<Route>();
+  routes = new SvelteSet<Route>();
 
   /**
    * The handlers for the router instance.
