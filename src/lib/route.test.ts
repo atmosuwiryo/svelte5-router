@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { Route } from "./route.svelte";
+import { Route, RouteResult } from "./route.svelte";
 
 describe("Route.test", () => {
   test("matches an exact string path", () => {
@@ -63,5 +63,29 @@ describe("Route.test", () => {
 
     expect(result.condition).toBe("exact-match");
     expect(result.params).toEqual({ child: "foo" });
+  });
+
+  test("absolute() prefixes the base path when present", () => {
+    expect(new Route({ path: "/a", basePath: "/base" }).absolute()).toBe("/base/a");
+    expect(new Route({ path: "/a" }).absolute()).toBe("/a");
+  });
+});
+
+describe("RouteResult.toString", () => {
+  const build = (original: unknown, condition: string = "exact-match") =>
+    new RouteResult({
+      result: {
+        path: { condition, original: "/a" },
+        querystring: { condition: "permitted-no-conditions", original },
+        status: 200
+      }
+    } as any);
+
+  test("appends the querystring when present", () => {
+    expect(build({ a: 1, b: "x" }).toString()).toBe("/a?a=1&b=x");
+  });
+
+  test("omits an empty querystring", () => {
+    expect(build("").toString()).toBe("/a");
   });
 });

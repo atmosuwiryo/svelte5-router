@@ -197,3 +197,29 @@ describe("registry", () => {
     expect(windowStub.dispatchEvent).toHaveBeenCalled();
   });
 });
+
+describe("RouterInstance hooks and base path", () => {
+  test("runs a global post hook after applying", async () => {
+    const post = vi.fn(() => true);
+    const apply = vi.fn();
+    const instance = makeInstance({ hooks: { post } }, apply);
+
+    await instance.handleStateChange("http://localhost/a");
+
+    expect(apply).toHaveBeenCalledTimes(1);
+    expect(post).toHaveBeenCalled();
+  });
+
+  test("strips the router base path before matching", async () => {
+    const apply = vi.fn();
+    const instance = makeInstance(
+      { basePath: "/app", routes: [{ path: "/users", component: B }] },
+      apply
+    );
+
+    await instance.handleStateChange("http://localhost/app/users");
+
+    expect(apply).toHaveBeenCalledTimes(1);
+    expect(instance.current?.result.component).toBe(B);
+  });
+});

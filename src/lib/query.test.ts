@@ -64,3 +64,22 @@ describe("Query.test", () => {
     );
   });
 });
+
+describe("Query utilities", () => {
+  test("get returns a param value or the default", () => {
+    const q = new Query("a=1&b=two");
+
+    expect(q.get("a")).toBe(1);
+    expect(q.get("b")).toBe("two");
+    expect(q.get("missing", "fallback")).toBe("fallback");
+  });
+
+  test("toString serializes params", () => {
+    expect(new Query("a=1&b=two").toString()).toBe("a=1&b=two");
+    expect(new Query("a[0]=x&a[1]=y").toString()).toBe("a=x,y");
+  });
+
+  test("toJSON stringifies values", () => {
+    expect(new Query("a=1&b=two").toJSON()).toEqual({ a: "1", b: "two" });
+  });
+});
