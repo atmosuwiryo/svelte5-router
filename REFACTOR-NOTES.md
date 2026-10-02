@@ -292,15 +292,22 @@ inline reimplementations rather than the router.
   can't silently regress.
 - Removed the `test.only` focus markers from `helpers/urls.test.ts`.
 
-**Result:** `src/lib` statements **45.9% → 75.4%**; `router-instance` **0% →
-76.9%**; 94 tests passing (was 79).
+**Result:** `src/lib` statements **45.9% → 87.0%**, branches **66.2% → 81.9%**,
+functions **43.4% → 87.1%**; 133 tests passing (was 79). This second pass added:
+DOM action wiring (`actions.test.ts`), history helpers (`history.test.ts`),
+`Query` utilities (`toString`/`toJSON`/`get`), the `evaluators.any`/`valid`
+tables, `logging` level/sink paths, `runtime.config`, `paths.base`,
+`RouteResult.toString` / `Route.absolute`, the marshal throw path, and
+`urls.parse` relative + array branches.
 
-**Still uncovered (known gaps):** `actions/route.svelte.ts` and
-`actions/active.svelte.ts` (~5–9%, DOM actions), `path.ts` (44%), the
-`goto`/`replace`/`pop`/`query` history helpers, `logging.ts` (56%), `tracing`
-branches (64%), the relative-URL branch of `urls.parse` (branches 46%), the
-`runtime` env fallbacks (branches 21%), and most of `evaluators.any[...]`
-(functions 45%).
+**Dead code removed** (verified zero references and undocumented): the `Path`
+class (`path.ts`), `wait` (`utilities.svelte.ts`), `routesArray` and
+`RouterInstance.toJSON`, `MarshallableType`, `FailedConditions`, and
+`Query.delete` / `Query.clear`.
+
+**Still uncovered:** `tracing.svelte.ts` (~64%, debug `toConsole` branches),
+`router-instance` branches (~59%, hook arrays / renavigation edges),
+`urls.parse` branches (~56%), and the `runtime` env-fallback branches (~21%).
 
 **Side observation (possible bug, not fixed):** `handleStateChange` computes
 `shouldApply = this.config.renavigation !== false` independent of whether the
