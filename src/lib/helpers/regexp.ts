@@ -24,18 +24,18 @@ export namespace regexp {
   };
 
   /**
-   * Check if a string contains regex syntax.
+   * Check whether a string is intended to be a regular expression.
+   *
+   * Only regex-only constructs count: special characters
+   * `[] {} () * + ? \ ^ $ |`, character classes (`\w \d \s` and negations),
+   * and groups. Ordinary punctuation that appears in plain paths — `.`, `,`,
+   * `#`, and whitespace — is deliberately excluded, so `/docs/intro.html` is
+   * matched literally rather than compiled with `.` as a wildcard.
    *
    * @param v The string to check.
    * @returns True if the string contains regex syntax, false otherwise.
    */
   export const can = (v: string): boolean => {
-    // Check for:
-    // - Special characters: [] {} () * + ? . \ ^ $ |
-    // - Character classes: \w \d \s and their negations
-    // - Anchors: ^ $
-    // - Quantifiers: + * ? {}
-    // - Groups: (? (?: (?= (?! (?<= (?<!
-    return /[[\]{}()*+?.,\\^$|#\s]|\\[wWdDsS]|\(\?[:!=<]?/.test(v);
+    return /[[\]{}()*+?\\^$|]|\\[wWdDsS]/.test(v);
   };
 }

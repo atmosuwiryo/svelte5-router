@@ -24,6 +24,25 @@ describe("regexp", () => {
   test("should convert /(^home$/ to a RegExp", () => {
     expect(() => regexp.from("/(^home$/")).toThrowError();
   });
+
+  describe("can", () => {
+    test("treats plain paths (dots, commas, spaces, #) as non-regex", () => {
+      expect(regexp.can("/docs/intro.html")).toBe(false);
+      expect(regexp.can("/a,b")).toBe(false);
+      expect(regexp.can("/a b")).toBe(false);
+      expect(regexp.can("/a#b")).toBe(false);
+      expect(regexp.can("home")).toBe(false);
+    });
+
+    test("detects regex-only constructs", () => {
+      expect(regexp.can("^/home$")).toBe(true);
+      expect(regexp.can("(?<child>.*)")).toBe(true);
+      expect(regexp.can("foo(bar)")).toBe(true);
+      expect(regexp.can("a|b")).toBe(true);
+      expect(regexp.can("a+b")).toBe(true);
+      expect(regexp.can("^\\/parameter-extraction\\/(?<child>.*)$")).toBe(true);
+    });
+  });
 });
 
 describe("evaluators", () => {
