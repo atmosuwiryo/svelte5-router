@@ -11,10 +11,9 @@ import { Query } from "./query.svelte";
 
 import { evaluators, type Condition, type Evaluation } from "./helpers/evaluators";
 import { Identities } from "./helpers/identify";
-import { marshal } from "./helpers/marshal";
 import { normalize } from "./helpers/normalize";
 import { regexp } from "./helpers/regexp";
-import type { Span, Trace } from "./helpers/tracing.svelte";
+import type { Span } from "./helpers/tracing.svelte";
 import { urls, type ReturnParam } from "./helpers/urls";
 
 /**
@@ -398,12 +397,6 @@ export class Route {
   status?: number;
 
   /**
-   * Traces are a list of objects that describe the route's path and query params
-   * as it is processed by the router.
-   */
-  traces?: Trace[] = $state([]);
-
-  /**
    * The constructor for the `Route` class.
    *
    * @param {Route} config An instance of the `Route` class.
@@ -466,9 +459,13 @@ export class Route {
         };
       }
     }
-    // Handle numeric paths being passed in at the route.path level:
-    else if (typeof this.path === "number" && this.path === marshal(matcher).value) {
-      throw new Error("numbered route match not supported at the route.path level");
+    // Numeric paths are not supported at the route.path level; treat them as
+    // a miss rather than throwing (a throw here would abort routing entirely).
+    else if (typeof this.path === "number") {
+      return {
+        condition: "no-match",
+        params: {}
+      };
     }
 
     return {
