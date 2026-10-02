@@ -158,13 +158,16 @@ valid input:
 - `Query.test` semantics clarified: `exact-match` iff every route constraint is
   present in the actual params and matches; otherwise `no-match` (see §8 item 2).
 - Removed unused `Route.traces` field (also made `Route` rune-free/testable).
+- Regex named-group params are now returned verbatim as **strings**. Previously
+  `RegExp` paths coerced groups via `marshal` (`"007"` → `7`) while string
+  regex paths did not — now both are faithful strings (see §10).
 
 ---
 
 ## 7. Verification evidence (all observed)
 
 - `npx svelte-check` → **0 errors, 0 warnings** (with `strictNullChecks: true`).
-- `npx vitest run` → **65 passed, 0 skipped, 0 failed** (10 files).
+- `npx vitest run` → **75 passed, 0 skipped, 0 failed** (12 files).
 - `npm run test:ci` (vitest + v8 coverage) → green.
 - `npm run build` (`svelte-package`) → **success** (`src/lib -> dist`), with
   `find dist -name '*.test.*'` → 0.
@@ -239,10 +242,26 @@ is verified through build output.
 
 ---
 
-## 10. Remaining known issues (not addressed)
+## 10. Remaining known issues — resolved
 
-- The vitest harness still has no Svelte plugin, so `.svelte.ts` modules that
-  evaluate runes at import time (e.g. `tracing.svelte.ts`) cannot be unit-tested
-  directly. `traceEvent` remains covered by `svelte-check` + the package build.
-- `marshal` coerces regex group values (`"42"` → `42`); this is existing
-  behaviour, now asserted by a test rather than treated as a bug.
+1. **Runes are now testable.** `vitest.config.ts` loads
+   `@sveltejs/vite-plugin-svelte`, so `.svelte.ts` modules are compiled and can
+   be imported by tests. Added `helpers/tracing.test.ts` (4 tests: `createSpan`,
+   `Span.trace`, `traceEvent` no-op on undefined span, and metadata shape) and
+   `utilities.test.ts` (4 tests for `ReactiveMap`).
+2. **Regex group params are faithful strings.** `evaluators.regexp` no longer
+   marshals captured groups. This removes the inconsistency between `RegExp`
+   paths (which coerced) and string-regex paths (which did not), and stops the
+   lossy `"007"` → `7` conversion. Covered by `route.test.ts`.
+
+---
+
+## 11. Newly observed (needs a decision)
+
+- **`normalize()` mangles anchored string-regex paths.** `Route` normalizes a
+  string `path` by prepending `/` when it does not start with one; for a regex
+  string like `"^/home$"` this yields `"/^/home$"`, which then never matches.
+  Non-anchored strings (e.g. `"(?<child>.*)"`) happen to work. Discovered while
+  writing the group-coercion tests; not fixed here because it is a separate
+  change to path normalization (fix: skip `normalize` for strings that
+  `regexp.can()` classifies as regex). Say the word and I'll take it.
