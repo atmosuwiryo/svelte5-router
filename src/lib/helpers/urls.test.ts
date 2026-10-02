@@ -140,3 +140,14 @@ test("parses a relative URL using window.location", () => {
 afterEach(() => {
   vi.unstubAllGlobals();
 });
+
+test("throws for an empty URL", () => {
+  expect(() => urls.parse("")).toThrow();
+});
+
+test("parses a file URL with the query before the hash", () => {
+  const result = urls.parse("file:///C:/app/index.html?a=1#/foo");
+
+  expect(result.host).toBe("/C:/app/index.html");
+  expect(result.path).toBe("/?a=1#/foo");
+});

@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 
 import { Query } from "./query.svelte";
 
@@ -82,4 +82,28 @@ describe("Query utilities", () => {
   test("toJSON stringifies values", () => {
     expect(new Query("a=1&b=two").toJSON()).toEqual({ a: "1", b: "two" });
   });
+});
+
+describe("Query.goto", () => {
+  test("navigates with the current params", () => {
+    const pushState = vi.fn();
+    vi.stubGlobal("window", {
+      location: { origin: "http://localhost" },
+      history: { pushState, replaceState: vi.fn() }
+    });
+
+    new Query("a=1").goto("/foo");
+
+    expect(pushState).toHaveBeenCalledWith({}, "", "http://localhost/foo?a=1");
+  });
+});
+
+describe("Query.test guards", () => {
+  test("returns undefined for a non-object inbound value", () => {
+    expect(new Query("a=1").test(undefined as any)).toBeUndefined();
+  });
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
 });

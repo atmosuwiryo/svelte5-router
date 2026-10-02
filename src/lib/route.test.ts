@@ -69,6 +69,12 @@ describe("Route.test", () => {
     expect(new Route({ path: "/a", basePath: "/base" }).absolute()).toBe("/base/a");
     expect(new Route({ path: "/a" }).absolute()).toBe("/a");
   });
+
+  test("builds a Query from a querystring config", () => {
+    const route = new Route({ path: "/a", querystring: { a: "1" } });
+
+    expect(route.querystring?.params).toEqual({ a: 1 });
+  });
 });
 
 describe("RouteResult.toString", () => {
@@ -87,5 +93,9 @@ describe("RouteResult.toString", () => {
 
   test("omits an empty querystring", () => {
     expect(build("").toString()).toBe("/a");
+  });
+
+  test("appends a raw string querystring", () => {
+    expect(build("a=1").toString()).toBe("/a?a=1");
   });
 });

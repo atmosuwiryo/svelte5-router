@@ -114,4 +114,26 @@ describe("evaluators.valid", () => {
     expect(evaluators.valid[Identities.null](null)).toBe(false);
     expect(evaluators.valid[Identities.undefined](undefined)).toBe(false);
   });
+
+  test("validates booleans and objects", () => {
+    expect(evaluators.valid[Identities.boolean](false)).toBe(true);
+    expect(evaluators.valid[Identities.boolean](true)).toBe(false);
+    expect(evaluators.valid[Identities.object]({})).toBe(true);
+    expect(evaluators.valid[Identities.object](1 as unknown)).toBe(true);
+  });
+});
+
+describe("evaluators reference and regexp edges", () => {
+  test("compares promises, functions and unknowns by identity", () => {
+    const promise = Promise.resolve(1);
+    const fn = () => {};
+
+    expect(evaluators.any[Identities.promise](promise, promise)).toBe(true);
+    expect(evaluators.any[Identities.function](fn, fn)).toBe(true);
+    expect(evaluators.any[Identities.unknown](1, 1)).toBe(true);
+  });
+
+  test("returns the first unnamed regex capture", () => {
+    expect(evaluators.any[Identities.regexp](/(a)/, "xax")).toBe("a");
+  });
 });
