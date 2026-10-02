@@ -54,20 +54,6 @@ export class Query {
     return (this.params[key] as T) || defaultValue;
   }
 
-  /**
-   * Delete a value from the query string parameters.
-   */
-  delete(key: string) {
-    delete this.params[key];
-  }
-
-  /**
-   * Clear the query string parameters.
-   */
-  clear() {
-    this.params = {};
-  }
-
   goto(path: string) {
     goto(path, this.params);
   }

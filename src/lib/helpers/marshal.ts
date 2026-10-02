@@ -1,11 +1,6 @@
 import { Identities, type Identity } from "./identify";
 
 /**
- * A value that can be marshalled into a typed identity wrapper.
- */
-export type MarshallableType = string | number | boolean | RegExp | Function | Promise<unknown>;
-
-/**
  * A value paired with the identity that describes it.
  */
 export type Marshalled<T> = {

@@ -27,13 +27,6 @@ export const SuccessfulConditions: Condition[] = [
 ];
 
 /**
- * The conditions that are considered failed.
- *
- * @category Router
- */
-export const FailedConditions: Condition[] = ["no-match", "one-or-more-missing"];
-
-/**
  * The evaluation results of the route.
  *
  * @category Router
