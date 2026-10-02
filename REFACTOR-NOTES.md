@@ -292,25 +292,50 @@ inline reimplementations rather than the router.
   can't silently regress.
 - Removed the `test.only` focus markers from `helpers/urls.test.ts`.
 
-**Result:** `src/lib` statements **45.9% → 87.0%**, branches **66.2% → 81.9%**,
-functions **43.4% → 87.1%**; 133 tests passing (was 79). This second pass added:
-DOM action wiring (`actions.test.ts`), history helpers (`history.test.ts`),
-`Query` utilities (`toString`/`toJSON`/`get`), the `evaluators.any`/`valid`
-tables, `logging` level/sink paths, `runtime.config`, `paths.base`,
-`RouteResult.toString` / `Route.absolute`, the marshal throw path, and
-`urls.parse` relative + array branches.
+**Result:** `src/lib` statements **45.9% → 97.9%**, branches **66.2% → 88.9%**,
+functions **43.4% → 98.3%**; 160 tests passing (was 79). Both passes added:
+engine + registry + statuses, DOM actions, history helpers, `Query`
+utilities, the `evaluators.any`/`valid` tables, `logging` level/sink paths,
+`runtime.config`, `paths.base`, `identify`, `RouteResult.toString` /
+`Route.absolute`, the marshal throw path and non-string tagging, `urls.parse`
+relative/array/query-before-hash branches, `tracing.toConsole` levels, and the
+engine's querystring-constrained matching, route/global post hooks, base-path
+equals-path default, event handlers, `deregister`, and `renavigation` paths.
 
 **Dead code removed** (verified zero references and undocumented): the `Path`
 class (`path.ts`), `wait` (`utilities.svelte.ts`), `routesArray` and
 `RouterInstance.toJSON`, `MarshallableType`, `FailedConditions`, and
 `Query.delete` / `Query.clear`.
 
-**Still uncovered:** `tracing.svelte.ts` (~64%, debug `toConsole` branches),
-`router-instance` branches (~59%, hook arrays / renavigation edges),
-`urls.parse` branches (~56%), and the `runtime` env-fallback branches (~21%).
+**Still uncovered (deliberately):** only the environmental/defensive paths —
+the `runtime` env-access `catch {}` blocks (~59% branches), some `urls.parse`
+branch permutations, and `router-instance` branch edges. These would require
+fabricating failing environments rather than representing real behavior.
 
-**Side observation (possible bug, not fixed):** `handleStateChange` computes
-`shouldApply = this.config.renavigation !== false` independent of whether the
-route changed, so `renavigation: false` skips the *first* render too — the
-component would never mount. Flagged for a decision rather than enshrined in a
-test.
+---
+
+## 13. `renavigation: false` skipped the first render — fixed
+
+The test-completeness pass surfaced the bug that §12 had flagged:
+`handleStateChange` computed
+
+```ts
+const shouldApply = this.config.renavigation !== false;
+```
+
+independent of whether the route changed, so with `renavigation: false` the
+`applyFn` was **never** called — not even on the first navigation — and the
+component would never mount. The `isSameRoute` value was computed and logged but
+never used in the decision. (The old, now-deleted `router-integration.test.ts`
+actually encoded the intended rule: `!isSameRoute || renavigation !== false`.)
+
+Fix:
+
+```ts
+const shouldApply = !isSameRoute || this.config.renavigation !== false;
+```
+
+So: a changed route always applies; a same-route re-navigation applies only when
+renavigation is enabled. Covered by three `router-instance.test.ts` cases
+(first render with renavigation disabled, same-route skip, same-route
+re-apply).
