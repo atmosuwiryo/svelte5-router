@@ -17,8 +17,17 @@ export default defineConfig({
       "**/.{idea,git,cache,output,temp}/**"
     ],
     coverage: {
+      include: ["src/lib/**"],
+      exclude: ["src/lib/**/*.test.ts"],
       reporter: ["json-summary"],
-      reportsDirectory: "tmp/coverage"
+      reportsDirectory: "tmp/coverage",
+      // Floor for the library only; raise as coverage improves.
+      thresholds: {
+        statements: 70,
+        lines: 70,
+        branches: 70,
+        functions: 55
+      }
     }
   }
 });

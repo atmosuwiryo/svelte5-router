@@ -2,7 +2,7 @@ import { expect, test } from "vitest";
 
 import { urls } from "./urls";
 
-test.only("parses with no query parameters", () => {
+test("parses with no query parameters", () => {
   expect(urls.parse("http://localhost:5173/#/foo/bar")).toEqual({
     protocol: "http",
     host: "localhost",
@@ -23,7 +23,7 @@ test.only("parses with no query parameters", () => {
   });
 });
 
-test.only("parses key-value query parameters", () => {
+test("parses key-value query parameters", () => {
   let result = urls.parse("http://localhost:5173/#/foo/bar?negative=-123&a=1&str=string&b=true");
   expect(result).toEqual({
     protocol: "http",
@@ -55,7 +55,7 @@ test.only("parses key-value query parameters", () => {
   });
 });
 
-test.only("file url without query parameters", () => {
+test("file url without query parameters", () => {
   let result = urls.parse("file:///C:/Users/user1/projects/app1/index.html#/foo/bar");
   expect(result).toEqual({
     protocol: "file",
@@ -79,7 +79,7 @@ test.only("file url without query parameters", () => {
   });
 });
 
-test.only("file url with key-value query parameters", () => {
+test("file url with key-value query parameters", () => {
   let result = urls.parse("file:///C:/Users/user1/projects/app1/index.html#/foo/bar?negative=-123&a=1&str=string&b=true");
   expect(result).toEqual({
     protocol: "file",
@@ -111,7 +111,7 @@ test.only("file url with key-value query parameters", () => {
   });
 });
 
-// test.only("parses array parameter parsing", () => {
+// test("parses array parameter parsing", () => {
 //   expect(urls.parse("http://localhost:5173/#/foo/bar?a[3]=3&a[19]=1.9&a[0]=first&a[99]=9.99&a[5]=false")).toEqual({
 //     protocol: "http",
 //     host: "localhost",
@@ -126,16 +126,16 @@ test.only("file url with key-value query parameters", () => {
 //   });
 // });
 
-// test.only("query is undefined", () => {
+// test("query is undefined", () => {
 //   expect(urls.parse("http://localhost:5173/foo/bar").query.toString()).toEqual("");
 // });
 
-// test.only("query.toString() matches location.search", () => {
+// test("query.toString() matches location.search", () => {
 //   expect(urls.parse("http://localhost:5173/foo/bar?a=1&b=2").query.toString()).toEqual("a=1&b=2");
 //   expect(urls.parse("http://localhost:5173/#/foo/bar?a=1&b=2").query.toString()).toEqual("a=1&b=2");
 // });
 
-// test.only("query.toString() matches multiples (pagination=2,23&company=123)", () => {
+// test("query.toString() matches multiples (pagination=2,23&company=123)", () => {
 //   expect(urls.parse("http://localhost:5173/foo/bar?pagination=2,23&company=123").query.toString()).toEqual(
 //     "pagination=2,23&company=123"
 //   );
