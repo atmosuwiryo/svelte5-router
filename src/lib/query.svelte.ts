@@ -50,14 +50,9 @@ export class Query {
    * @param key - The key to get the value from.
    * @param defaultValue - The default value to return if the key is not found.
    */
-  get<T>(key: string, defaultValue?: T): T {
+  get<T>(key: string, defaultValue?: T): T | undefined {
     return (this.params[key] as T) || defaultValue;
   }
-
-  /**
-   * Set a value in the query string parameters.
-   */
-  set(key: string, value: string) {}
 
   /**
    * Delete a value from the query string parameters.
@@ -77,7 +72,7 @@ export class Query {
     goto(path, this.params);
   }
 
-  test(inbound: Query): QueryEvaluationResult {
+  test(inbound: Query): QueryEvaluationResult | undefined {
     if (typeof inbound === "object") {
       const matches: Record<string, ReturnParam> = {};
       for (const [key, test] of Object.entries(inbound.params)) {
@@ -125,6 +120,8 @@ export class Query {
         matches: matches as Record<string, ReturnParam>
       };
     }
+
+    return undefined;
   }
 
   /**

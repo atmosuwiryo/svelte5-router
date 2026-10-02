@@ -5,7 +5,7 @@ import { execute } from "./utilities.svelte";
 
 import { SuccessfulConditions } from "./helpers/evaluators";
 import { normalize } from "./helpers/normalize";
-import { createSpan } from "./helpers/tracing.svelte";
+import { createSpan, traceEvent } from "./helpers/tracing.svelte";
 import { urls } from "./helpers/urls";
 
 /**
@@ -121,7 +121,7 @@ export class RouterInstance {
            * If the route has no base path (because it's optional), use
            * the router instance's base path.
            */
-          basePath: route.basePath || this.config.basePath
+          basePath: route.basePath ?? this.config.basePath
         })
       );
     }
@@ -149,16 +149,16 @@ export class RouterInstance {
     if (!span) {
       span = createSpan("detected history change event");
     }
-    span?.trace({
+    traceEvent(span, {
       prefix: "🔍",
       name: "router-instance.handleStateChange",
       description: `attempting to handle a new state change for path "${path}"`,
+      location: "/src/lib/router-instance.svelte:handleStateChange()",
+      router: {
+        id: this.config.id,
+        basePath: this.config.basePath
+      },
       metadata: {
-        router: {
-          id: this.config.id,
-          basePath: this.config.basePath
-        },
-        location: "/src/lib/router-instance.svelte:handleStateChange()",
         basePath: this.config.basePath,
         path,
         query,
@@ -169,16 +169,16 @@ export class RouterInstance {
     const result = await this.get(path, query, span);
 
     if (result && SuccessfulConditions.includes(result.result.path.condition)) {
-      span?.trace({
+      traceEvent(span, {
         prefix: "✅",
         name: "router-instance.handleStateChange",
         description: `route found for path "${path}"`,
+        location: "/src/lib/router-instance.svelte:handleStateChange()",
+        router: {
+          id: this.config.id,
+          basePath: this.config.basePath
+        },
         metadata: {
-          location: "/src/lib/router-instance.svelte:handleStateChange()",
-          router: {
-            id: this.config.id,
-            basePath: this.config.basePath
-          },
           path,
           query: query?.params || false,
           route: result,
@@ -212,18 +212,18 @@ export class RouterInstance {
       if (shouldApply) {
         this.current = undefined;
         
-        span?.trace({
+        traceEvent(span, {
           prefix: isSameRoute ? "🔄" : "✅",
           name: "router-instance.applyRoute",
           description: isSameRoute ? 
             `re-mounting same route "${result.result.path.original}" (renavigation enabled)` :
             `applying new route "${result.result.path.original}"`,
+          location: "/src/lib/router-instance.svelte:handleStateChange()",
+          router: {
+            id: this.config.id,
+            basePath: this.config.basePath
+          },
           metadata: {
-            location: "/src/lib/router-instance.svelte:handleStateChange()",
-            router: {
-              id: this.config.id,
-              basePath: this.config.basePath
-            },
             isSameRoute,
             renavigation: this.config.renavigation,
             result
@@ -235,16 +235,16 @@ export class RouterInstance {
         
         this.current = result;
       } else {
-        span?.trace({
+        traceEvent(span, {
           prefix: "⏭️",
           name: "router-instance.skipRenavigation",
           description: `skipping same route "${result.result.path.original}" (renavigation disabled)`,
+          location: "/src/lib/router-instance.svelte:handleStateChange()",
+          router: {
+            id: this.config.id,
+            basePath: this.config.basePath
+          },
           metadata: {
-            location: "/src/lib/router-instance.svelte:handleStateChange()",
-            router: {
-              id: this.config.id,
-              basePath: this.config.basePath
-            },
             isSameRoute,
             renavigation: this.config.renavigation,
             result
@@ -301,11 +301,11 @@ export class RouterInstance {
    *
    * @returns {RegistryMatch} The matched route for the given path.
    */
-  async get(path: string, query?: Query, span?: Span): Promise<RouteResult> {
+  async get(path: string, query?: Query, span?: Span): Promise<RouteResult | undefined> {
     path = path.replace("/#", "");
     const normalized = normalize(path.replace(this.config.basePath || "/", ""));
-    const renderDefaultRoute = (reason: string): RouteResult => {
-      let defaultRoute: Route;
+    const renderDefaultRoute = (reason: string): RouteResult | undefined => {
+      let defaultRoute: Route | undefined;
 
       for (const route of this.routes) {
         if (!route.path || defaultRoutes.includes(route.path.toString())) {
@@ -314,16 +314,16 @@ export class RouterInstance {
         }
       }
 
-      span?.trace({
+      traceEvent(span, {
         prefix: defaultRoute ? "✅" : "❌",
         name: "router-instance.getDefaultRoute",
         description: `get default route because "${reason}"`,
+        location: "/src/lib/router-instance.svelte:get()",
+        router: {
+          id: this.config.id,
+          basePath: this.config.basePath
+        },
         metadata: {
-          location: "/src/lib/router-instance.svelte:get()",
-          router: {
-            id: this.config.id,
-            basePath: this.config.basePath
-          },
           path,
           query,
           normalized,
@@ -349,18 +349,20 @@ export class RouterInstance {
           }
         });
       }
+
+      return undefined;
     };
 
-    span?.trace({
+    traceEvent(span, {
       prefix: "🔍",
       name: "router-instance.get",
       description: `${this.config.id} with base path "${this.config.basePath || "/"}" is attempting to get a route for path "${path}"`,
+      location: "/src/lib/router-instance.svelte:get()",
+      router: {
+        id: this.config.id,
+        basePath: this.config.basePath
+      },
       metadata: {
-        location: "/src/lib/router-instance.svelte:get()",
-        router: {
-          id: this.config.id,
-          basePath: this.config.basePath
-        },
         path,
         query,
         normalized
@@ -371,7 +373,7 @@ export class RouterInstance {
       return renderDefaultRoute("base path is the same as the path");
     }
 
-    let candidate: RouteResult;
+    let candidate: RouteResult | undefined;
 
     /**
      * Now we check for router nesting:
@@ -379,16 +381,16 @@ export class RouterInstance {
     for (const route of this.routes) {
       const pathEvaluation = route.test(normalized);
       if (pathEvaluation && SuccessfulConditions.includes(pathEvaluation.condition)) {
-        span?.trace({
+        traceEvent(span, {
           prefix: "✅",
           name: "router-instance.get:routesloop",
           description: `${pathEvaluation.condition} for inbound path "${path}"${route.name ? ` (named: "${route.name}")` : ""}`,
+          location: "/src/lib/router-instance.svelte:get():forloop",
+          router: {
+            id: this.config.id,
+            basePath: this.config.basePath
+          },
           metadata: {
-            location: "/src/lib/router-instance.svelte:get():forloop",
-            router: {
-              id: this.config.id,
-              basePath: this.config.basePath
-            },
             path,
             query,
             normalized,
@@ -401,17 +403,17 @@ export class RouterInstance {
 
         if (route.querystring && query) {
           const queryEvaluation = query.test(route.querystring);
-          if (SuccessfulConditions.includes(queryEvaluation?.condition)) {
-            span?.trace({
+          if (queryEvaluation && SuccessfulConditions.includes(queryEvaluation.condition)) {
+            traceEvent(span, {
               prefix: "✅",
               name: "router-instance.get.evaluateQuery",
               description: `${queryEvaluation?.condition} evaluating querystring "${query?.toString()}" for the route "${path}"${route.name ? ` (named: "${route.name}")` : ""}`,
+              location: "/src/lib/router-instance.svelte:get()",
+              router: {
+                id: this.config.id,
+                basePath: this.config.basePath
+              },
               metadata: {
-                location: "/src/lib/router-instance.svelte:get()",
-                router: {
-                  id: this.config.id,
-                  basePath: this.config.basePath
-                },
                 path,
                 query,
                 normalized,

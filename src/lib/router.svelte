@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onDestroy, unmount, type Component } from "svelte";
-  import { createSpan, Span } from "./helpers/tracing.svelte";
+  import { createSpan, traceEvent, Span } from "./helpers/tracing.svelte";
   import { registry } from "./registry.svelte";
   import { type RouteResult } from "./route.svelte";
   import { RouterInstanceConfig } from "./router-instance-config";
@@ -14,21 +14,21 @@
 
   let RenderableComponent = $state<Component | null>(null);
   let router: RouterInstance;
-  let route: RouteResult = $state();
-  let additionalProps = $state<Record<string, any>>({});
+  let route: RouteResult | undefined = $state();
+  let additionalProps = $state<Record<string, any> | undefined>({});
 
   const apply = async (r: RouteResult, span?: Span) => {
     route = r;
-    span?.trace({
+    traceEvent(span, {
       prefix: "✅",
       name: "apply",
       description: `<Router${router.config.id ? ` id="${router.config.id}"` : ""}/> applying route ${r.result.path.original} (${r.result.path.condition})`,
+      location: "/src/lib/router.svelte:apply()",
+      router: {
+        id: router.config.id,
+        basePath: router.config.basePath
+      },
       metadata: {
-        location: "/src/lib/router.svelte:apply()",
-        router: {
-          id: router.config.id,
-          basePath: router.config.basePath
-        },
         result: r
       }
     });
@@ -52,16 +52,14 @@
 
   router = registry.register(new RouterInstanceConfig(rest), apply, span);
 
-  span?.trace({
+  traceEvent(span, {
     prefix: "✅",
     name: "<Router/> Component",
     description: "new component mounted",
-    metadata: {
-      router: {
-        id: router.config.id,
-        basePath: router.config.basePath
-      },
-      location: "/src/lib/router.svelte:mount()"
+    location: "/src/lib/router.svelte:mount()",
+    router: {
+      id: router.config.id,
+      basePath: router.config.basePath
     }
   });
 

@@ -15,7 +15,7 @@ export class Path {
   protocol: string;
   host: string;
   path: string;
-  query: Query;
+  query?: Query;
 
   constructor() {
     this.protocol = location.protocol;

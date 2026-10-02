@@ -22,5 +22,11 @@ export namespace hash {
         hash: afterHash
       };
     }
+
+    return {
+      path: "",
+      query: new Query(""),
+      hash: ""
+    };
   };
 }

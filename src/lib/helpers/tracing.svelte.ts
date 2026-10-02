@@ -4,6 +4,16 @@ import { logging } from "./logging";
 import { runtime } from "./runtime";
 
 /**
+ * The fields a caller may provide when creating a {@link Span}.
+ */
+export type SpanInit = Pick<Span, "prefix" | "id" | "date" | "name" | "description" | "metadata">;
+
+/**
+ * The fields a caller may provide when recording a {@link Trace}.
+ */
+export type TraceInit = Pick<Trace, "prefix" | "id" | "date" | "name" | "description" | "metadata">;
+
+/**
  * A span is a single trace in a trace collection.
  *
  * @category Helpers
@@ -15,9 +25,9 @@ export class Span {
   name?: string;
   description?: string;
   metadata?: Record<string, any>;
-  traces?: ReactiveMap<string, Trace> = $state(new ReactiveMap());
+  traces: ReactiveMap<string, Trace> = $state(new ReactiveMap());
 
-  constructor(span: Span, prefix?: string) {
+  constructor(span: SpanInit, prefix?: string) {
     this.prefix = prefix;
     this.name = span.name;
     this.id = span.id || Math.random().toString(36).substring(2, 25);
@@ -26,9 +36,9 @@ export class Span {
     this.date = span.date || new Date();
   }
 
-  trace?(trace: Trace, prefix?: string): Trace {
-    const id = trace.id || Math.random().toString(36).substring(2, 25);
-    trace = new Trace(trace, this.traces.size + 1, this, prefix);
+  trace(input: TraceInit, prefix?: string): Trace {
+    const id = input.id || Math.random().toString(36).substring(2, 25);
+    const trace = new Trace(input, this.traces.size + 1, this, prefix);
     this.traces.set(id, trace);
 
     logging.trace(prefix, trace);
@@ -36,7 +46,7 @@ export class Span {
     return trace;
   }
 
-  get?(): MapIterator<Trace> {
+  get(): MapIterator<Trace> {
     return this.traces.values();
   }
 }
@@ -56,7 +66,7 @@ export class Trace {
   metadata?: Record<string, any>;
   span?: Span;
 
-  constructor(trace: Trace, index?: number, span?: Span, prefix?: string) {
+  constructor(trace: TraceInit, index?: number, span?: Span, prefix?: string) {
     this.id = trace.id || Math.random().toString(36).substring(2, 25);
     this.index = index;
     this.date = trace.date || new Date();
@@ -72,7 +82,7 @@ export class Trace {
    *
    * @category Helpers
    */
-  toConsole?(level?: logging.LogLevel): void {
+  toConsole(level?: logging.LogLevel): void {
     const out = [
       "%c%s %cspan:%c%s:%ctrace:%c%s%c:%c%s %c%s",
       "color: #505050",
@@ -94,20 +104,20 @@ export class Trace {
       out[0] = `${this.prefix} %c%s %cspan:%c%s:%ctrace:%c%s%c:%c%s %c%s`;
     }
 
-    if (runtime.current.tracing.level >= logging.LogLevel.TRACE) {
+    if ((runtime.current.tracing.level ?? 0) >= logging.LogLevel.TRACE) {
       out[0] += "\n%c%s";
       out.push(
         "color: #6B757F",
         `attached trace metadata:\n\n${JSON.stringify(
           {
-            span: this.span.metadata,
+            span: this.span?.metadata,
             trace: this.metadata
           },
           null,
           2
         )}`
       );
-    } else if (runtime.current.tracing.level >= logging.LogLevel.DEBUG) {
+    } else if ((runtime.current.tracing.level ?? 0) >= logging.LogLevel.DEBUG) {
       if (this.span) {
         // @ts-ignore
         out.push(this.span.metadata);
@@ -140,4 +150,39 @@ export const createSpan = (name: string, metadata?: Record<string, any>) => {
     spans.set(name, span);
     return span;
   }
+};
+
+/**
+ * The context for a {@link trace} event.
+ */
+export type TraceContext = {
+  prefix?: string;
+  name: string;
+  description: string;
+  /** Recorded under `metadata.location`. */
+  location?: string;
+  /** Recorded under `metadata.router`. */
+  router?: Record<string, any>;
+  /** Any additional metadata to record. */
+  metadata?: Record<string, any>;
+};
+
+/**
+ * Record a trace event on a span, collapsing the `prefix`/`location`/`router`
+ * scaffolding so call sites stay close to the logic they annotate.
+ *
+ * @param span - The span to record on (no-op when undefined).
+ * @param context - What to record.
+ */
+export const traceEvent = (span: Span | undefined, context: TraceContext): void => {
+  span?.trace({
+    prefix: context.prefix,
+    name: context.name,
+    description: context.description,
+    metadata: {
+      ...(context.location ? { location: context.location } : {}),
+      ...(context.router ? { router: context.router } : {}),
+      ...context.metadata
+    }
+  });
 };

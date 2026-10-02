@@ -3,7 +3,7 @@ import { RouterInstanceConfig } from "./router-instance-config";
 import { RouterInstance } from "./router-instance.svelte";
 import { ReactiveMap } from "./utilities.svelte";
 
-import type { Span } from "./helpers/tracing.svelte";
+import { traceEvent, type Span } from "./helpers/tracing.svelte";
 
 /**
  * Handles the dynamic registration and deregistration of router instances.
@@ -54,21 +54,17 @@ export class Registry {
 
     const instance = new RouterInstance(config, applyFn);
 
-    if (span) {
-      span.trace({
-        prefix: "🔍",
-        name: "registry.register",
-        description: "registering a new router instance",
-        metadata: {
-          router: {
-            id: config.id,
-            basePath: config.basePath
-          },
-          location: "/src/lib/registry.svelte:register()",
-          config
-        }
-      });
-    }
+    traceEvent(span, {
+      prefix: "🔍",
+      name: "registry.register",
+      description: "registering a new router instance",
+      location: "/src/lib/registry.svelte:register()",
+      router: {
+        id: config.id,
+        basePath: config.basePath
+      },
+      metadata: { config }
+    });
 
     this.instances.set(config.id, instance);
 
@@ -82,21 +78,17 @@ export class Registry {
    */
   deregister(id: string, span?: Span): void {
     const instance = this.instances.get(id);
-    if (span) {
-      span.trace({
-        prefix: instance ? "✅" : "❌",
-        name: "registry.deregister",
-        description: "deregistering a router instance",
-        metadata: {
-          router: {
-            id,
-            basePath: instance.config.basePath
-          },
-          location: "/src/lib/registry.svelte:deregister()",
-          config: instance.config
-        }
-      });
-    }
+    traceEvent(span, {
+      prefix: instance ? "✅" : "❌",
+      name: "registry.deregister",
+      description: "deregistering a router instance",
+      location: "/src/lib/registry.svelte:deregister()",
+      router: {
+        id,
+        basePath: instance?.config.basePath
+      },
+      metadata: { config: instance?.config }
+    });
 
     if (instance) {
       this.instances.delete(id);
@@ -105,7 +97,7 @@ export class Registry {
     }
   }
 
-  get(id: string): RouterInstance {
+  get(id: string): RouterInstance | undefined {
     const instance = this.instances.get(id);
 
     return instance;

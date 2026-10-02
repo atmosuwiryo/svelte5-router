@@ -77,7 +77,7 @@ export namespace logging {
    * Raw log method.
    */
   export const log = (level: LogLevel, ...msg: Log[]): void => {
-    if (level <= runtime.current.logging.level && level !== LogLevel.DISABLED) {
+    if (level <= (runtime.current.logging.level ?? LogLevel.DEBUG) && level !== LogLevel.DISABLED) {
       if (runtime.current.logging.console) {
         if (msg.some((m) => m?.toConsole)) {
           msg.forEach((m) => m?.toConsole?.(runtime.current.logging.level));

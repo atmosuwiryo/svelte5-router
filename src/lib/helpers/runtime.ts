@@ -65,7 +65,7 @@ export namespace runtime {
    */
   export const config = (config?: Config): Config => {
     return {
-      tracing: config?.tracing ?? getEnvVar(["SPA_ROUTER", "tracing"], { enabled: false }),
+      tracing: config?.tracing ?? getEnvVar<Config["tracing"]>(["SPA_ROUTER", "tracing"], { enabled: false }) ?? { enabled: false },
       logging: {
         level: config?.logging?.level ?? getEnvVar(["SPA_ROUTER", "logging", "level"], 4),
         console: config?.logging?.console ?? getEnvVar(["SPA_ROUTER", "logging", "console"]),

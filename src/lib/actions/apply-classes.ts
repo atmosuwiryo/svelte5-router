@@ -26,7 +26,9 @@ export const applyActiveClass = (href: URL, options: RouteOptions, node: HTMLAnc
     if (Array.isArray(options.active?.class)) {
       node.classList.add(...options.active?.class);
     } else {
-      node.classList.add(options.active?.class);
+      if (options.active?.class) {
+        node.classList.add(options.active.class);
+      }
     }
     if (options.default?.class) {
       node.classList.remove(...options.default?.class);

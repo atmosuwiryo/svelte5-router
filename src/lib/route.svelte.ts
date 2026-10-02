@@ -181,7 +181,7 @@ export class RouteResult {
        * original: "filter=active&sort=name"
        * ```
        */
-      original: ReturnParam;
+      original: ReturnParam | undefined;
 
       /**
        * The parameters extracted from the querystring during evaluation.
@@ -295,24 +295,14 @@ export class RouteResult {
 export type ApplyFn = (result: RouteResult, span?: Span) => void;
 
 /**
- * The function that is used to apply a route to the DOM.
+ * The configuration for a route.
+ *
+ * This is the single shape used both by consumers when declaring `routes` and
+ * internally when resolving a {@link Route} instance.
  *
  * @category Router
  */
-export type ApplyFn2 = (result: RouteResult, span?: Span) => void;
-
-/**
- * A generic type that can be used to test the type of a value.
- * @category Router
- * @example
- * ```ts
- * const a: Testing<string> = "asdf";
- * const b: Testing<number> = 123;
- * ```
- */
-export type Testing<T> = T;
-
-export class RouteConfig {
+export type RouteConfig = {
   name?: string | number;
   basePath?: string;
   path?: PathType;
@@ -325,32 +315,7 @@ export class RouteConfig {
   };
   children?: RouteConfig[];
   status?: number;
-
-  constructor(config: RouteConfig) {
-    this.name = config.name;
-    this.basePath = config.basePath;
-    this.path = config.path;
-    this.querystring = config.querystring;
-    this.component = config.component;
-    this.props = config.props;
-    this.hooks = config.hooks;
-    this.status = config.status;
-  }
-
-  toJSON?(): any {
-    return {
-      name: this.name,
-      basePath: this.basePath,
-      path: this.path,
-      props: this.props,
-      component: this.component,
-      querystring: this.querystring,
-      hooks: this.hooks,
-      children: this.children,
-      status: this.status
-    };
-  }
-}
+};
 
 /**
  * A route that can be navigated to.
@@ -495,7 +460,7 @@ export class Route {
    * Parse the route against the given path.
    * @param path The path to parse against the route.
    */
-  test?(path: PathType): Evaluation {
+  test(path: PathType): Evaluation {
     const matcher = urls.path(path.toString());
     // Handle string paths being passed in at the route.path level:
     if (typeof this.path === "string") {
@@ -549,7 +514,7 @@ export class Route {
    * The absolute path of the route by combining the router's base path and
    * the route's path.
    */
-  absolute?(): string {
+  absolute(): string {
     /**
      * If the router has a base path, we need to combine it with the route's path
      * otherwise it will have "undefined" as the base path and the path will be
@@ -558,6 +523,6 @@ export class Route {
     if (this.basePath) {
       return `${this.basePath}${this.path}`;
     }
-    return this.path.toString();
+    return this.path?.toString() ?? "";
   }
 }

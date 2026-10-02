@@ -1,7 +1,7 @@
 import { type Component } from "svelte";
 
 import type { Hook } from "./hooks";
-import { RouteConfig } from "./route.svelte";
+import type { RouteConfig } from "./route.svelte";
 import type { Statuses } from "./statuses";
 
 /**
@@ -10,7 +10,7 @@ import type { Statuses } from "./statuses";
 export interface RouterInstanceConfigOptions {
   id?: string;
   basePath?: string;
-  routes: any[];
+  routes: RouteConfig[];
   hooks?: {
     pre?: Hook | Hook[];
     post?: Hook | Hook[];
@@ -36,7 +36,7 @@ export class RouterInstanceConfig {
    *
    * @optional If no value is provided, the id will be a random string of characters.
    */
-  id?: string;
+  id: string;
 
   /**
    * The base path for the router instance.
@@ -106,13 +106,7 @@ export class RouterInstanceConfig {
     this.notFoundComponent = config.notFoundComponent;
     this.statuses = config.statuses;
     this.renavigation = config.renavigation ?? true;
-    this.routes = config.routes.map(
-      (route) =>
-        new RouteConfig({
-          ...route,
-          ...config
-        })
-    );
+    this.routes = config.routes;
   }
 
   toJSON(): any {
