@@ -1,6 +1,10 @@
+import { svelte } from "@sveltejs/vite-plugin-svelte";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
+  // Compile Svelte 5 runes in `.svelte`/`.svelte.ts` modules so they can be
+  // imported and unit-tested (e.g. helpers/tracing.svelte.ts).
+  plugins: [svelte()],
   test: {
     // `.svelte-kit` holds `svelte-package` build output (including compiled
     // `*.test.js`), so exclude it to avoid collecting duplicate tests after a
