@@ -371,3 +371,34 @@ not introduced by the refactor.
 `/protected`, `/paths-and-params`, `/transitions`, `/extras`, `/hash` — all now
 report **0 console errors** and render their content (e.g. home 799 → 1602
 chars). Unit tests: `snippet.test.ts` (3). Full suite 163 passing.
+
+---
+
+## 15. Nested-router remount froze later navigation — fixed
+
+**Symptom:** after navigating within a nested router's own paths
+(e.g. `/home` → `/home/with-query-params?someQueryParam=123`), every later
+navigation updated the URL but the **rendered content froze**. The console
+showed `Error: router instance with id home-router already registered`.
+
+**Cause:** navigating within a route that contains a nested `<Router>` changes
+the outer router's `{#key route?.result?.path?.original || Math.random()}`, so
+the nested `<Router>` remounts. The new instance called
+`registry.register("home-router")` *before* the old instance's `onDestroy`
+called `deregister`, so the duplicate-id `throw` fired during render and
+aborted Svelte's effect flush — after which no further updates applied.
+
+**Fix:**
+- `registry.register` now **replaces** an existing instance with the same id
+  (deregistering it) instead of throwing.
+- `RouterInstance.deregister` only unregisters when it is still the registered
+  instance, so a replaced instance's late `onDestroy` cannot delete its
+  replacement.
+
+**Behaviour change:** registering a duplicate id no longer throws; it replaces.
+Tests updated accordingly (`router-instance.test.ts`).
+
+**Verified:** full demo navigation sequence — `/home` →
+`/home/with-query-params?someQueryParam=123` → `/patterns` → `/nested` →
+`/protected` → `/home` — now updates content on every step with **zero console
+errors**.

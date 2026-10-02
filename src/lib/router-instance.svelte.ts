@@ -551,6 +551,10 @@ export class RouterInstance {
     window.removeEventListener("popstate", this.handlers.popStateHandler);
     window.removeEventListener("hashchange", this.handlers.hashChangeHandler);
 
-    registry.deregister(this.config.id, span);
+    // Only unregister if this instance is still the registered one — a
+    // re-mounted nested router may have already replaced it.
+    if (registry.get(this.config.id) === this) {
+      registry.deregister(this.config.id, span);
+    }
   }
 }

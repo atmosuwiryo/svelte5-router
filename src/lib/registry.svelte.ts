@@ -48,9 +48,11 @@ export class Registry {
    * @see {@link deregister}: The opposite of this method.
    */
   register(config: RouterInstanceConfig, applyFn: ApplyFn, span?: Span): RouterInstance {
-    if (this.instances.has(config.id)) {
-      throw new Error(`router instance with id ${config.id} already registered`);
-    }
+    // A nested `<Router>` can remount with the same id before its previous
+    // instance is destroyed (e.g. navigating within a nested router's own
+    // paths). Replace the old instance instead of throwing mid-render, which
+    // would abort Svelte's effect flush and freeze subsequent updates.
+    this.instances.get(config.id)?.deregister(span);
 
     const instance = new RouterInstance(config, applyFn);
 

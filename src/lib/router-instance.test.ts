@@ -181,13 +181,25 @@ describe("RouterInstance.handleStateChange", () => {
 });
 
 describe("registry", () => {
-  test("registering a duplicate id throws", () => {
-    const config = new RouterInstanceConfigCtor({ id: "dup-id", routes: [] });
-    registry.register(config, vi.fn());
+  test("re-registering the same id replaces the previous instance", () => {
+    const first = registry.register(new RouterInstanceConfigCtor({ id: "dup-id", routes: [] }), vi.fn());
+    const second = registry.register(new RouterInstanceConfigCtor({ id: "dup-id", routes: [] }), vi.fn());
 
-    expect(() => registry.register(new RouterInstanceConfigCtor({ id: "dup-id", routes: [] }), vi.fn())).toThrow();
+    expect(second).not.toBe(first);
+    expect(registry.get("dup-id")).toBe(second);
 
     registry.deregister("dup-id");
+  });
+
+  test("a replaced instance's deregister does not remove its replacement", () => {
+    const first = registry.register(new RouterInstanceConfigCtor({ id: "repl-id", routes: [] }), vi.fn());
+    const second = registry.register(new RouterInstanceConfigCtor({ id: "repl-id", routes: [] }), vi.fn());
+
+    first.deregister();
+
+    expect(registry.get("repl-id")).toBe(second);
+
+    registry.deregister("repl-id");
   });
 
   test("deregistering an unknown id throws", () => {
