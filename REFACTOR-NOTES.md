@@ -60,9 +60,9 @@ bug surface:
 - `RouterInstance` resolves the router-basePath fallback with `??` instead of
   `||`.
 
-**Result.** `children` is preserved; route-level `basePath` and `hooks` survive.
-`Route.children` is now stored honestly but is still **not consumed by routing**
-(see §7).
+**Result.** Route-level `basePath` and `hooks` survive. `Route.children` was
+subsequently **removed entirely** (see §8, item 3) — it was unused and
+redundant with nested `<Router/>` composition.
 
 ---
 
@@ -109,8 +109,8 @@ telemetry.
 - Replaced all 12 inline `span?.trace({ ... })` blocks with `traceEvent(...)`.
 
 **Behaviour note:** trace `metadata` key order changed slightly (`location` now
-precedes `router`). This only affects the shape of debug output; no routing
-behaviour depends on it.
+precedes `router`). This is debug-output ordering only; `traceEvent`'s contract
+documents it as non-load-bearing. Resolved in §8, item 5.
 
 ---
 
@@ -154,44 +154,53 @@ valid input:
   `RouterInstanceConfig.get`, `Query.test`, `Query.get`.
 - Removed exports: `ToPrimitive` (`toPrimitive`), `ApplyFn2`, `Testing`.
 - `handleStateChange` / `get` now honestly return `Promise<... | undefined>`.
+- Removed `RouteConfig.children` and `Route.children` (unused; see §8 item 3).
+- `Query.test` semantics clarified: `exact-match` iff every route constraint is
+  present in the actual params and matches; otherwise `no-match` (see §8 item 2).
 
 ---
 
 ## 7. Verification evidence (all observed)
 
 - `npx svelte-check` → **0 errors, 0 warnings** (with `strictNullChecks: true`).
-- `npm run test:ci` (vitest + v8 coverage) → **41 passed, 2 skipped, 0 failed**.
-  The 2 skipped are the stale `hash` assertions (see §8).
+- `npx vitest run` → **54 passed, 0 skipped, 0 failed** (8 files).
+- `npm run test:ci` (vitest + v8 coverage) → green.
 - `npm run build` (`svelte-package`) → **success** (`src/lib -> dist`).
 
 Behaviour probes run during the work (temporary test, removed after):
 route `basePath` survives with router basePath set ✅; route `hooks` survive
-router hooks ✅; `children` preserved ✅.
+router hooks ✅. New tests cover the `Query.test` fix (9 cases) and `hash.parse`
+(4 cases).
 
 ---
 
-## 8. Needs your review / decision (when you're back)
+## 8. Checklist resolutions (after review)
 
-1. **Merge?** The branch is complete and green but **not merged** — that needs
-   your explicit go-ahead.
-2. **`Query.test()` single-param bug — deliberately NOT fixed.** At
-   `src/lib/query.svelte.ts:113`, the exact-match check compares against
-   `Object.keys(inbound).length` (the `Query` instance's own keys) instead of
-   `Object.keys(inbound.params).length`. Verified effect: a single-param exact
-   querystring match returns `no-match`, so a route with exactly one required
-   query param never matches. This is a **correctness fix, not a refactor**, so
-   I left it out. Fix + test?
-3. **`Route.children` are preserved but unused.** Config no longer drops them,
-   but nothing in routing consumes them yet. Decide: wire them up (feature) or
-   drop the field (simplify).
-4. **`hash.parse` semantics.** It returns an empty `Hash` for a falsy URL (it
-   previously returned `undefined` implicitly). The 2 skipped tests in
-   `hash.test.ts` describe *intended* behaviour that still isn't implemented —
-   enable-and-fix, or delete?
-5. **Metadata key order** in trace output changed (§4) — confirm that's fine.
-6. **Formatting is not enforced.** `prettier --check` flags files I never
-   touched, and `prettier-plugin-svelte` fails to load (`Couldn't resolve parser
-   "svelte"`). Pre-existing; I did **not** reformat, to keep the diff clean.
+1. **Merge — still open.** Branch is complete and green but **not merged**; that
+   needs your explicit go-ahead.
+2. **`Query.test()` — FIXED.** The exact-match check compared against
+   `Object.keys(inbound)` (the `Query` instance's own keys) instead of
+   `Object.keys(inbound.params)`, so a single required param never matched. It
+   also recorded failures as matches (storing `false`), which the old `valid`
+   check accepted. `Query.test` now returns `exact-match` iff every route
+   constraint is present and matches, else `no-match`. Added **9 tests**
+   (single/multi/triple, missing, extra-ignored, boolean/number coercion,
+   regex, array).
+3. **`Route.children` — DROPPED.** It had no consumers and no docs, and nesting
+   in this project is done by composing nested `<Router/>` components (see
+   `demo/src/routes/nested/nested.svelte`). Removed from `RouteConfig` and
+   `Route` rather than building outlet machinery that contradicts the design.
+4. **`hash.parse` — KEPT and tested.** The hash path is real, used
+   functionality (hash-link active states; demoed at `/hash`). Its contract is
+   "the fragment": everything after `#`, split into `path` + parsed `query`; a
+   URL with no `#` yields an empty fragment. Replaced the skipped suite with
+   **4 active tests**. (The old first assertion expected a no-`#` URL to parse as
+   a path, which contradicts the "hash" contract — discarded.)
+5. **Trace metadata key order — KEEP.** Nothing reads metadata keys
+   positionally; only console/sink debug output is affected, and the helper now
+   emits a *consistent* order (`location`, `router`, extras) rather than the
+   previously mixed per-call-site order. Contract documented on `traceEvent`.
+6. **Formatting — keep as-is** (your call).
 
 ---
 
@@ -202,7 +211,7 @@ router hooks ✅; `children` preserved ✅.
   compiled tests to `.svelte-kit/__package__` (and `dist`), running
   `npm run build` locally makes `vitest` collect duplicate test files until
   those artifact dirs are removed. Both are gitignored; cleaning them restores
-  the 41/2 test count.
+  the 54/0 test count.
 - `Regexp.can()` treats any path containing `.`/`,`/space/`#` as a regex, so
   plain paths like `/docs/intro.html` compile as regex. Pre-existing.
 - `Route.test()` throws (rather than returning `no-match`) for a numeric `path`.

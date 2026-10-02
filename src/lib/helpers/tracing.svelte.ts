@@ -171,6 +171,10 @@ export type TraceContext = {
  * Record a trace event on a span, collapsing the `prefix`/`location`/`router`
  * scaffolding so call sites stay close to the logic they annotate.
  *
+ * Metadata is emitted in insertion order (`location`, then `router`, then any
+ * extra fields). That order is an implementation detail of the debug output —
+ * no behaviour depends on it. A `span` of `undefined` makes this a no-op.
+ *
  * @param span - The span to record on (no-op when undefined).
  * @param context - What to record.
  */
