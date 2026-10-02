@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test, vi } from "vitest";
 
+import { Query } from "./query.svelte";
 import type { ApplyFn } from "./route.svelte";
 import type { RouterInstance } from "./router-instance.svelte";
 import type { RouterInstanceConfig } from "./router-instance-config";
@@ -12,18 +13,21 @@ import type { RouterInstanceConfig } from "./router-instance-config";
 let RouterInstanceCtor: typeof RouterInstance;
 let RouterInstanceConfigCtor: typeof RouterInstanceConfig;
 let registry: any;
+let RegistryCtor: any;
 let windowStub: any;
+let listenersStub: Map<string, Set<Function>>;
 
 beforeAll(async () => {
   const listeners = new Map<string, Set<Function>>();
+  listenersStub = listeners;
   const location = {
-    href: "http://localhost/",
+    href: "http://localhost/a",
     protocol: "http:",
     hostname: "localhost",
     port: "",
-    pathname: "/",
+    pathname: "/a",
     search: "",
-    toString: () => "http://localhost/"
+    toString: () => "http://localhost/a"
   };
   const history = { pushState: vi.fn(), replaceState: vi.fn(), go: vi.fn() };
 
@@ -44,7 +48,7 @@ beforeAll(async () => {
 
   ({ RouterInstance: RouterInstanceCtor } = await import("./router-instance.svelte"));
   ({ RouterInstanceConfig: RouterInstanceConfigCtor } = await import("./router-instance-config"));
-  ({ registry } = await import("./registry.svelte"));
+  ({ registry, Registry: RegistryCtor } = await import("./registry.svelte"));
 });
 
 afterAll(() => {
@@ -196,6 +200,53 @@ describe("registry", () => {
 
     expect(windowStub.dispatchEvent).toHaveBeenCalled();
   });
+
+  test("the patched history.replaceState dispatches a replaceState event", () => {
+    windowStub.dispatchEvent.mockClear();
+    window.history.replaceState({}, "", "/y");
+
+    expect(windowStub.dispatchEvent).toHaveBeenCalled();
+  });
+
+  test("get returns a registered instance and undefined otherwise", () => {
+    const config = new RouterInstanceConfigCtor({ id: "get-id", routes: [] });
+    const instance = registry.register(config, vi.fn());
+
+    expect(registry.get("get-id")).toBe(instance);
+    expect(registry.get("nope")).toBeUndefined();
+
+    registry.deregister("get-id");
+  });
+
+  test("constructing Registry again returns the existing singleton (HMR guard)", () => {
+    expect(new RegistryCtor()).toBe(registry);
+  });
+});
+
+describe("RouterInstance.deregister and window listeners", () => {
+  test("deregister removes listeners and unregisters the instance", () => {
+    const config = new RouterInstanceConfigCtor({ id: "dereg-id", routes: [] });
+    const instance = registry.register(config, vi.fn());
+    const removeSpy = vi.spyOn(windowStub, "removeEventListener");
+
+    instance.deregister();
+
+    expect(removeSpy).toHaveBeenCalled();
+    expect(registry.get("dereg-id")).toBeUndefined();
+    removeSpy.mockRestore();
+  });
+
+  test("window history listeners trigger a state change", async () => {
+    const apply = vi.fn();
+    makeInstance({}, apply);
+
+    for (const type of ["pushState", "replaceState", "popstate", "hashchange"]) {
+      const handler = [...(listenersStub.get(type) ?? [])].at(-1) as Function | undefined;
+      handler?.();
+    }
+
+    await vi.waitFor(() => expect(apply).toHaveBeenCalled());
+  });
 });
 
 describe("RouterInstance hooks and base path", () => {
@@ -221,5 +272,72 @@ describe("RouterInstance hooks and base path", () => {
 
     expect(apply).toHaveBeenCalledTimes(1);
     expect(instance.current?.result.component).toBe(B);
+  });
+
+  test("matches a route with a querystring constraint", async () => {
+    const instance = makeInstance({ routes: [{ path: "/a", component: A, querystring: { q: "1" } }] });
+
+    const hit = await instance.get("/a", new Query("q=1"));
+    const miss = await instance.get("/a", new Query("q=2"));
+
+    expect(hit?.result.path.condition).toBe("exact-match");
+    expect(miss).toBeUndefined();
+  });
+
+  test("returns the default route when the path equals the base path", async () => {
+    const instance = makeInstance({
+      basePath: "/app",
+      routes: [
+        { path: "", component: A },
+        { path: "/x", component: B }
+      ]
+    });
+
+    const result = await instance.get("/app");
+
+    expect(result?.result.path.condition).toBe("default-match");
+  });
+
+  test("runs a route-level post hook after applying", async () => {
+    const post = vi.fn(() => true);
+    const apply = vi.fn();
+    const instance = makeInstance(
+      { routes: [{ path: "/a", component: A, hooks: { post } }] },
+      apply
+    );
+
+    await instance.handleStateChange("http://localhost/a");
+
+    expect(apply).toHaveBeenCalledTimes(1);
+    expect(post).toHaveBeenCalled();
+  });
+
+  test("applies on first navigation even when renavigation is disabled", async () => {
+    const apply = vi.fn();
+    const instance = makeInstance({ renavigation: false }, apply);
+
+    await instance.handleStateChange("http://localhost/a");
+
+    expect(apply).toHaveBeenCalledTimes(1);
+  });
+
+  test("skips re-applying the same route when renavigation is disabled", async () => {
+    const apply = vi.fn();
+    const instance = makeInstance({ renavigation: false }, apply);
+
+    await instance.handleStateChange("http://localhost/a");
+    await instance.handleStateChange("http://localhost/a");
+
+    expect(apply).toHaveBeenCalledTimes(1);
+  });
+
+  test("re-applies the same route when renavigation is enabled", async () => {
+    const apply = vi.fn();
+    const instance = makeInstance({}, apply);
+
+    await instance.handleStateChange("http://localhost/a");
+    await instance.handleStateChange("http://localhost/a");
+
+    expect(apply).toHaveBeenCalledTimes(2);
   });
 });

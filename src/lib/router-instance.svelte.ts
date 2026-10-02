@@ -208,8 +208,10 @@ export class RouterInstance {
         this.current.result.path.original === result.result.path.original &&
         JSON.stringify(this.current.result.querystring.params) === JSON.stringify(result.result.querystring.params);
       
-      // This ensures components re-mount for both same routes and different routes using same component
-      const shouldApply = this.config.renavigation !== false;
+      // Apply when the route actually changed, or when re-navigation is enabled.
+      // Without the `!isSameRoute` term, `renavigation: false` would skip the
+      // very first render too, so the component would never mount.
+      const shouldApply = !isSameRoute || this.config.renavigation !== false;
       
       if (shouldApply) {
         this.current = undefined;
